@@ -70,6 +70,8 @@ jobs:
         with:
           context: .
           file: docker/nginx/Dockerfile
+          build-args: |
+            APP_IMAGE=${{ env.APP_IMAGE_NAME }}:latest
           push: true
           tags: ${{ steps.nginx-meta.outputs.tags }}
           labels: ${{ steps.nginx-meta.outputs.labels }}
