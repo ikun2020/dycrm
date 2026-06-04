@@ -31,36 +31,19 @@ cp .env.production.example .env
 - `APP_URL` 改成你的域名，例如 `https://crm.yourdomain.com`
 - `APP_PORT` 保持 `3100`
 - `APP_IMAGE` 改成 GitHub Actions 生成的镜像，例如 `ghcr.io/your-github-user/dycrm:latest`
+- `NGINX_IMAGE` 改成 GitHub Actions 生成的 Nginx 镜像，例如 `ghcr.io/your-github-user/dycrm-nginx:latest`
 - `DB_PASSWORD` 和 `DB_ROOT_PASSWORD` 改成强密码
 - 后续接 AI 时填写 `OPENAI_API_KEY`
 
-## 3. 初始化 Laravel 项目
+## 3. 首次部署
 
-当前仓库还没有完整 Laravel 源码时，在 VPS 项目目录执行：
-
-```bash
-docker run --rm -v "$PWD":/app -w /app composer:2 sh -lc '
-  rm -rf /app/.laravel-tmp
-  composer create-project laravel/laravel /app/.laravel-tmp
-  find /app/.laravel-tmp -mindepth 1 -maxdepth 1 ! -name .env ! -name .git -exec cp -a {} /app/ \;
-  rm -rf /app/.laravel-tmp
-'
-```
-
-然后安装 Filament：
-
-```bash
-docker run --rm -v "$PWD":/app -w /app composer:2 require filament/filament
-docker compose -f docker-compose.prod.yml run --rm app php artisan filament:install --panels
-```
-
-也可以使用首次部署脚本：
+仓库已经包含 Laravel + Filament 代码，可以直接使用首次部署脚本：
 
 ```bash
 bash scripts/debian12-first-install.sh
 ```
 
-脚本第一次运行会安装 Docker 或创建 `.env` 后停下，让你重新登录或填写生产配置；配置好以后再次运行即可继续初始化项目。
+脚本第一次运行会安装 Docker 或创建 `.env` 后停下，让你重新登录或填写生产配置；配置好以后再次运行即可继续构建镜像、启动服务并执行迁移。
 
 ## 4. 启动服务
 
