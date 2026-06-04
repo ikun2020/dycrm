@@ -2,15 +2,17 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Exports\CreatorExporter;
-use App\Filament\Imports\CreatorImporter;
 use App\Filament\Resources\CreatorResource\Pages;
 use App\Models\Creator;
+use App\Support\CreatorCsvImporter;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class CreatorResource extends Resource
 {
@@ -129,22 +131,72 @@ class CreatorResource extends Resource
 
                         fclose($handle);
                     }, 'creator-import-template.csv', ['Content-Type' => 'text/csv; charset=UTF-8'])),
-                Tables\Actions\ImportAction::make()
+                Tables\Actions\Action::make('importCreatorsCsv')
                     ->label(__('Import Creators'))
-                    ->modalDescription(__('Creator Import Help'))
-                    ->importer(CreatorImporter::class),
-                Tables\Actions\ExportAction::make()
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->form([
+                        Forms\Components\FileUpload::make('file')
+                            ->label(__('Import File'))
+                            ->disk('local')
+                            ->directory('imports')
+                            ->maxSize(50 * 1024)
+                            ->helperText(__('Creator Import Help'))
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $file = is_array($data['file'] ?? null) ? reset($data['file']) : ($data['file'] ?? null);
+
+                        if (! $file) {
+                            Notification::make()
+                                ->title(__('Import file is required.'))
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $result = app(CreatorCsvImporter::class)->import(Storage::disk('local')->path($file));
+                        Storage::disk('local')->delete($file);
+
+                        $body = __('Creator import completed. :count row(s) imported.', [
+                            'count' => $result['imported'],
+                        ]);
+
+                        if ($result['failed'] > 0) {
+                            $body .= ' '.__(':count row(s) failed. Download the failure file for details.', [
+                                'count' => $result['failed'],
+                            ]);
+
+                            if ($result['errors'] !== []) {
+                                $body .= "\n".implode("\n", $result['errors']);
+                            }
+                        }
+
+                        $notification = Notification::make()
+                            ->title(__('Import Creators'))
+                            ->body($body);
+
+                        $result['imported'] > 0
+                            ? $notification->success()
+                            : $notification->danger();
+
+                        $notification->send();
+                    }),
+                Tables\Actions\Action::make('exportCreatorsCsv')
                     ->label(__('Export Creators'))
-                    ->exporter(CreatorExporter::class),
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->action(fn () => self::downloadCreatorsCsv()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\ExportBulkAction::make()
+                    Tables\Actions\BulkAction::make('exportSelectedCreatorsCsv')
                         ->label(__('Export Selected'))
-                        ->exporter(CreatorExporter::class),
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->action(fn (Collection $records) => self::downloadCreatorsCsv($records->modelKeys()))
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
@@ -184,5 +236,74 @@ class CreatorResource extends Resource
             'kuaishou' => __('Kuaishou'),
             'other' => __('Other'),
         ];
+    }
+
+    private static function downloadCreatorsCsv(?array $ids = null)
+    {
+        $query = Creator::query()->with('owner')->orderBy('id');
+
+        if ($ids !== null) {
+            $query->whereKey($ids);
+        }
+
+        return response()->streamDownload(function () use ($query): void {
+            $handle = fopen('php://output', 'w');
+
+            echo "\xEF\xBB\xBF";
+
+            fputcsv($handle, [
+                __('Nickname'),
+                __('Platform'),
+                __('Platform UID'),
+                __('Phone'),
+                __('WeChat'),
+                __('Agency / Company'),
+                __('Category'),
+                __('Followers'),
+                __('Average Viewers'),
+                __('Average Order Value'),
+                __('Quote Fee'),
+                __('Commission Rate'),
+                __('Status'),
+                __('Tags'),
+                __('AI Score'),
+                __('Grade'),
+                __('AI Summary'),
+                __('Notes'),
+                __('Last Contacted At'),
+                __('Next Follow-up At'),
+                __('Owner'),
+            ]);
+
+            $query->chunk(500, function ($creators) use ($handle): void {
+                foreach ($creators as $creator) {
+                    fputcsv($handle, [
+                        $creator->nickname,
+                        self::platformOptions()[$creator->platform] ?? $creator->platform,
+                        $creator->platform_uid,
+                        $creator->phone,
+                        $creator->wechat,
+                        $creator->agency_name,
+                        $creator->category,
+                        $creator->followers_count,
+                        $creator->avg_viewers,
+                        $creator->avg_order_value,
+                        $creator->quote_fee,
+                        $creator->commission_rate,
+                        self::statusOptions()[$creator->cooperation_status] ?? $creator->cooperation_status,
+                        implode(',', $creator->tags ?? []),
+                        $creator->ai_score,
+                        $creator->ai_grade,
+                        $creator->ai_summary,
+                        $creator->notes,
+                        $creator->last_contacted_at?->format('Y-m-d H:i:s'),
+                        $creator->next_follow_up_at?->format('Y-m-d H:i:s'),
+                        $creator->owner?->name,
+                    ]);
+                }
+            });
+
+            fclose($handle);
+        }, 'creators-'.now()->format('YmdHis').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }
