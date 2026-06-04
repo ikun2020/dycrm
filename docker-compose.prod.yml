@@ -1,0 +1,83 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    image: ${APP_IMAGE:-dycrm-app:latest}
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www/html
+      - storage:/var/www/html/storage
+    depends_on:
+      - mysql
+      - redis
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-3100}:80"
+    volumes:
+      - ./:/var/www/html:ro
+      - storage:/var/www/html/storage:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-dycrm}
+      MYSQL_USER: ${DB_USERNAME:-dycrm}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3306:3306"
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  queue:
+    image: ${APP_IMAGE:-dycrm-app:latest}
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www/html
+      - storage:/var/www/html/storage
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=120"]
+    depends_on:
+      - app
+      - mysql
+      - redis
+
+  scheduler:
+    image: ${APP_IMAGE:-dycrm-app:latest}
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www/html
+      - storage:/var/www/html/storage
+    command: ["sh", "-c", "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"]
+    depends_on:
+      - app
+      - mysql
+      - redis
+
+volumes:
+  mysql-data:
+  redis-data:
+  storage:
