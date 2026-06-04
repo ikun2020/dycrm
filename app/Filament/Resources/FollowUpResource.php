@@ -14,29 +14,29 @@ class FollowUpResource extends Resource
 {
     protected static ?string $model = FollowUp::class;
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
-    protected static ?string $navigationGroup = 'Creators';
-    protected static ?string $modelLabel = 'Follow-up';
-    protected static ?string $pluralModelLabel = 'Follow-ups';
+    protected static ?string $navigationGroup = "\u{8FBE}\u{4EBA}\u{7BA1}\u{7406}";
+    protected static ?string $modelLabel = "\u{8DDF}\u{8FDB}";
+    protected static ?string $pluralModelLabel = "\u{8DDF}\u{8FDB}\u{8BB0}\u{5F55}";
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Follow-up Content')->columns(2)->schema([
-                Forms\Components\Select::make('creator_id')->label('Creator')->relationship('creator', 'nickname')->searchable()->preload()->required(),
-                Forms\Components\Select::make('user_id')->label('User')->relationship('user', 'name')->searchable()->preload(),
-                Forms\Components\Select::make('channel')->label('Channel')->options([
-                    'wechat' => 'WeChat',
-                    'phone' => 'Phone',
-                    'douyin' => 'Douyin',
-                    'taobao' => 'Taobao',
-                    'other' => 'Other',
+            Forms\Components\Section::make(__('Follow-up Content'))->columns(2)->schema([
+                Forms\Components\Select::make('creator_id')->label(__('Creator'))->relationship('creator', 'nickname')->searchable()->preload()->required(),
+                Forms\Components\Select::make('user_id')->label(__('User'))->relationship('user', 'name')->searchable()->preload(),
+                Forms\Components\Select::make('channel')->label(__('Channel'))->options([
+                    'wechat' => __('WeChat'),
+                    'phone' => __('Phone'),
+                    'douyin' => __('Douyin'),
+                    'taobao' => __('Taobao'),
+                    'other' => __('Other'),
                 ])->default('wechat'),
-                Forms\Components\TextInput::make('contact_person')->label('Contact Person')->maxLength(255),
-                Forms\Components\DateTimePicker::make('contacted_at')->label('Contacted At')->seconds(false)->required(),
-                Forms\Components\DateTimePicker::make('next_follow_up_at')->label('Next Follow-up At')->seconds(false),
-                Forms\Components\Select::make('status_after')->label('Status After')->options(CreatorResource::statusOptions()),
-                Forms\Components\Textarea::make('content')->label('Content')->rows(5)->required()->columnSpanFull(),
-                Forms\Components\Textarea::make('next_action')->label('Next Action')->rows(3)->columnSpanFull(),
+                Forms\Components\TextInput::make('contact_person')->label(__('Contact Person'))->maxLength(255),
+                Forms\Components\DateTimePicker::make('contacted_at')->label(__('Contacted At'))->seconds(false)->required(),
+                Forms\Components\DateTimePicker::make('next_follow_up_at')->label(__('Next Follow-up At'))->seconds(false),
+                Forms\Components\Select::make('status_after')->label(__('Status After'))->options(CreatorResource::statusOptions()),
+                Forms\Components\Textarea::make('content')->label(__('Content'))->rows(5)->required()->columnSpanFull(),
+                Forms\Components\Textarea::make('next_action')->label(__('Next Action'))->rows(3)->columnSpanFull(),
             ]),
         ]);
     }
@@ -45,19 +45,19 @@ class FollowUpResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('creator.nickname')->label('Creator')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('channel')->label('Channel')->badge(),
-                Tables\Columns\TextColumn::make('contacted_at')->label('Contacted At')->dateTime('Y-m-d H:i')->sortable(),
-                Tables\Columns\TextColumn::make('next_follow_up_at')->label('Next Follow-up')->dateTime('Y-m-d H:i')->sortable(),
-                Tables\Columns\TextColumn::make('user.name')->label('User'),
+                Tables\Columns\TextColumn::make('creator.nickname')->label(__('Creator'))->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('channel')->label(__('Channel'))->badge(),
+                Tables\Columns\TextColumn::make('contacted_at')->label(__('Contacted At'))->dateTime('Y-m-d H:i')->sortable(),
+                Tables\Columns\TextColumn::make('next_follow_up_at')->label(__('Next Follow-up'))->dateTime('Y-m-d H:i')->sortable(),
+                Tables\Columns\TextColumn::make('user.name')->label(__('User')),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('channel')->label('Channel')->options([
-                    'wechat' => 'WeChat',
-                    'phone' => 'Phone',
-                    'douyin' => 'Douyin',
-                    'taobao' => 'Taobao',
-                    'other' => 'Other',
+                Tables\Filters\SelectFilter::make('channel')->label(__('Channel'))->options([
+                    'wechat' => __('WeChat'),
+                    'phone' => __('Phone'),
+                    'douyin' => __('Douyin'),
+                    'taobao' => __('Taobao'),
+                    'other' => __('Other'),
                 ]),
             ])
             ->actions([
