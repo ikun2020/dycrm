@@ -3,6 +3,10 @@ set -e
 
 mkdir -p \
     storage/app/livewire-tmp \
+    storage/app/private \
+    storage/app/private/imports \
+    storage/app/private/livewire-tmp \
+    storage/app/public \
     storage/framework/cache \
     storage/framework/sessions \
     storage/framework/views \

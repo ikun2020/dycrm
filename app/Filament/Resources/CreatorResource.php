@@ -11,7 +11,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Validation\Rules\File;
 
 class CreatorResource extends Resource
 {
@@ -131,12 +130,8 @@ class CreatorResource extends Resource
                         fclose($handle);
                     }, 'creator-import-template.csv', ['Content-Type' => 'text/csv; charset=UTF-8'])),
                 Tables\Actions\ImportAction::make()
-                    ->label(__('Import Creators CSV'))
-                    ->modalHeading(__('Import Creators CSV'))
+                    ->label(__('Import Creators'))
                     ->modalDescription(__('Creator Import Help'))
-                    ->fileRules([
-                        File::types(['csv', 'txt'])->max(10 * 1024),
-                    ])
                     ->importer(CreatorImporter::class),
                 Tables\Actions\ExportAction::make()
                     ->label(__('Export Creators'))
