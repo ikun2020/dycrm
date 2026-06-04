@@ -1,47 +1,38 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.3-fpm-bookworm
 
-RUN set -eux; \
-    apk add --no-cache \
-        bash \
-        curl \
-        freetype \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         git \
-        icu-libs \
-        libjpeg-turbo \
-        libpng \
-        libxml2 \
-        libzip \
-        oniguruma \
-        unzip \
-        zip; \
-    apk add --no-cache --virtual .build-deps \
-        $PHPIZE_DEPS \
-        curl-dev \
-        freetype-dev \
-        icu-dev \
-        libjpeg-turbo-dev \
+        libcurl4-openssl-dev \
+        libfreetype6-dev \
+        libicu-dev \
+        libjpeg62-turbo-dev \
+        libonig-dev \
         libpng-dev \
         libxml2-dev \
         libzip-dev \
-        oniguruma-dev; \
-    docker-php-ext-configure gd --with-freetype --with-jpeg; \
-    docker-php-ext-install \
-        bcmath \
-        curl \
-        dom \
-        exif \
-        gd \
-        intl \
-        mbstring \
-        opcache \
-        pcntl \
-        pdo_mysql \
-        simplexml \
-        xml \
-        xmlreader \
-        xmlwriter \
-        zip; \
-    apk del .build-deps
+        unzip \
+        zip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
+
+RUN docker-php-ext-install -j"$(nproc)" \
+    bcmath \
+    curl \
+    dom \
+    exif \
+    gd \
+    intl \
+    mbstring \
+    opcache \
+    pcntl \
+    pdo_mysql \
+    simplexml \
+    xml \
+    xmlreader \
+    xmlwriter \
+    zip
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
