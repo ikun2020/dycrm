@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CreatorResource\Pages;
 use App\Models\Creator;
+use App\Models\Product;
 use App\Support\CreatorCsvImporter;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -45,8 +46,9 @@ class CreatorResource extends Resource
                 Forms\Components\Select::make('owner_id')->label(__('Owner'))->relationship('owner', 'name')->searchable()->preload(),
             ]),
             Forms\Components\Section::make(__('AI Score'))->columns(3)->schema([
-                Forms\Components\TextInput::make('ai_score')->label(__('AI Score'))->numeric()->minValue(0)->maxValue(100)->default(0),
+                Forms\Components\TextInput::make('ai_score')->label(__('AI Score'))->numeric()->minValue(0)->maxValue(10)->default(0),
                 Forms\Components\TextInput::make('ai_grade')->label(__('Grade'))->maxLength(10),
+                Forms\Components\DateTimePicker::make('ai_scored_at')->label(__('AI Scored At'))->seconds(false),
                 Forms\Components\Textarea::make('ai_summary')->label(__('AI Summary'))->columnSpanFull()->rows(3),
             ]),
             Forms\Components\Section::make(__('Follow-up'))->columns(2)->schema([
@@ -67,6 +69,8 @@ class CreatorResource extends Resource
                 Tables\Columns\TextColumn::make('followers_count')->label(__('Followers'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('cooperation_status')->label(__('Status'))->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state)->badge(),
                 Tables\Columns\TextColumn::make('ai_score')->label(__('AI Score'))->sortable()->badge(),
+                Tables\Columns\TextColumn::make('ai_grade')->label(__('Grade'))->sortable()->badge(),
+                Tables\Columns\TextColumn::make('ai_scored_at')->label(__('AI Scored At'))->dateTime('Y-m-d H:i')->sortable(),
                 Tables\Columns\TextColumn::make('next_follow_up_at')->label(__('Next Follow-up'))->dateTime('Y-m-d H:i')->sortable(),
                 Tables\Columns\TextColumn::make('owner.name')->label(__('Owner')),
             ])
@@ -188,6 +192,20 @@ class CreatorResource extends Resource
                     ->action(fn () => self::downloadCreatorsCsv()),
             ])
             ->actions([
+                Tables\Actions\Action::make('generateAiScore')
+                    ->label(__('AI Rating'))
+                    ->icon('heroicon-o-sparkles')
+                    ->modalHeading(__('AI Rating'))
+                    ->modalWidth('5xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel(__('Close'))
+                    ->modalContent(fn (Creator $record) => view('filament.actions.creator-ai-diagnosis-modal', [
+                        'creator' => $record,
+                        'products' => Product::query()
+                            ->where('status', 'active')
+                            ->orderByDesc('id')
+                            ->get(['id', 'name', 'brand', 'category']),
+                    ])),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -268,6 +286,7 @@ class CreatorResource extends Resource
                 __('Tags'),
                 __('AI Score'),
                 __('Grade'),
+                __('AI Scored At'),
                 __('AI Summary'),
                 __('Notes'),
                 __('Last Contacted At'),
@@ -294,6 +313,7 @@ class CreatorResource extends Resource
                         implode(',', $creator->tags ?? []),
                         $creator->ai_score,
                         $creator->ai_grade,
+                        $creator->ai_scored_at?->format('Y-m-d H:i:s'),
                         $creator->ai_summary,
                         $creator->notes,
                         $creator->last_contacted_at?->format('Y-m-d H:i:s'),

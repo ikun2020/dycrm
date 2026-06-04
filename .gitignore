@@ -4,6 +4,7 @@
 /.env
 /.env.*
 !/.env.production.example
+!/.env.local.example
 /storage/app/*
 /storage/framework/cache/*
 /storage/framework/sessions/*

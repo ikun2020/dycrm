@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Creator extends Model
 {
+    protected static function booted(): void
+    {
+        static::creating(function (Creator $creator): void {
+            $creator->ai_score ??= 0;
+            $creator->followers_count ??= 0;
+            $creator->avg_viewers ??= 0;
+            $creator->avg_order_value ??= 0;
+            $creator->quote_fee ??= 0;
+            $creator->commission_rate ??= 0;
+            $creator->cooperation_status ??= 'to_develop';
+            $creator->platform ??= 'douyin';
+        });
+    }
+
     protected $fillable = [
         'nickname',
         'platform',
@@ -26,6 +40,7 @@ class Creator extends Model
         'ai_score',
         'ai_grade',
         'ai_summary',
+        'ai_scored_at',
         'notes',
         'last_contacted_at',
         'next_follow_up_at',
@@ -42,6 +57,7 @@ class Creator extends Model
             'quote_fee' => 'decimal:2',
             'commission_rate' => 'decimal:2',
             'ai_score' => 'integer',
+            'ai_scored_at' => 'datetime',
             'last_contacted_at' => 'datetime',
             'next_follow_up_at' => 'datetime',
         ];

@@ -31,6 +31,10 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Rose,
             ])
+            ->renderHook(
+                'panels::body.end',
+                fn (): string => '<script src="'.asset('js/creator-ai-diagnosis.js').'?v=20260605-6"></script>',
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
