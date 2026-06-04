@@ -11,8 +11,11 @@ RUN apt-get update \
         libpng-dev \
         libxml2-dev \
         libzip-dev \
+        nginx \
+        supervisor \
         unzip \
         zip \
+    && rm -f /etc/nginx/sites-enabled/default \
     && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
@@ -44,4 +47,9 @@ RUN composer validate --no-check-publish \
     && mkdir -p storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
-CMD ["php-fpm"]
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+EXPOSE 80
+
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

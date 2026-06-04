@@ -24,7 +24,6 @@ jobs:
         shell: bash
         run: |
           echo "APP_IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
-          echo "NGINX_IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}-nginx" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -55,25 +54,3 @@ jobs:
           labels: ${{ steps.app-meta.outputs.labels }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
-
-      - name: Extract Nginx metadata
-        id: nginx-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.NGINX_IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-
-
-      - name: Build and push Nginx image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/nginx/Dockerfile
-          build-args: |
-            APP_IMAGE=${{ env.APP_IMAGE_NAME }}:latest
-          push: true
-          tags: ${{ steps.nginx-meta.outputs.tags }}
-          labels: ${{ steps.nginx-meta.outputs.labels }}
-          cache-from: type=gha,scope=nginx
-          cache-to: type=gha,mode=max,scope=nginx
