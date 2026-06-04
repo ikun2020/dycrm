@@ -14,30 +14,29 @@ class FollowUpResource extends Resource
 {
     protected static ?string $model = FollowUp::class;
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
-    protected static ?string $navigationGroup = '达人管理';
-    protected static ?string $modelLabel = '跟进记录';
-    protected static ?string $pluralModelLabel = '跟进记录';
+    protected static ?string $navigationGroup = 'Creators';
+    protected static ?string $modelLabel = 'Follow-up';
+    protected static ?string $pluralModelLabel = 'Follow-ups';
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('沟通内容')->columns(2)->schema([
-                Forms\Components\Select::make('creator_id')->label('达人')->relationship('creator', 'nickname')->searchable()->preload()->required(),
-                Forms\Components\Select::make('user_id')->label('跟进人')->relationship('user', 'name')->searchable()->preload(),
-                Forms\Components\Select::make('channel')->label('渠道')->options([
-                    'wechat' => '微信',
-                    'phone' => '电话',
-                    'douyin' => '抖音私信',
-                    'taobao' => '淘宝',
-                    'feishu' => '飞书',
-                    'other' => '其他',
-                ])->default('wechat')->required(),
-                Forms\Components\TextInput::make('contact_person')->label('联系人')->maxLength(255),
-                Forms\Components\DateTimePicker::make('contacted_at')->label('沟通时间')->seconds(false)->required(),
-                Forms\Components\Select::make('status_after')->label('沟通后状态')->options(CreatorResource::statusOptions()),
-                Forms\Components\Textarea::make('content')->label('沟通记录')->rows(5)->required()->columnSpanFull(),
-                Forms\Components\Textarea::make('next_action')->label('下一步动作')->rows(3)->columnSpanFull(),
-                Forms\Components\DateTimePicker::make('next_follow_up_at')->label('下次跟进时间')->seconds(false),
+            Forms\Components\Section::make('Follow-up Content')->columns(2)->schema([
+                Forms\Components\Select::make('creator_id')->label('Creator')->relationship('creator', 'nickname')->searchable()->preload()->required(),
+                Forms\Components\Select::make('user_id')->label('User')->relationship('user', 'name')->searchable()->preload(),
+                Forms\Components\Select::make('channel')->label('Channel')->options([
+                    'wechat' => 'WeChat',
+                    'phone' => 'Phone',
+                    'douyin' => 'Douyin',
+                    'taobao' => 'Taobao',
+                    'other' => 'Other',
+                ])->default('wechat'),
+                Forms\Components\TextInput::make('contact_person')->label('Contact Person')->maxLength(255),
+                Forms\Components\DateTimePicker::make('contacted_at')->label('Contacted At')->seconds(false)->required(),
+                Forms\Components\DateTimePicker::make('next_follow_up_at')->label('Next Follow-up At')->seconds(false),
+                Forms\Components\Select::make('status_after')->label('Status After')->options(CreatorResource::statusOptions()),
+                Forms\Components\Textarea::make('content')->label('Content')->rows(5)->required()->columnSpanFull(),
+                Forms\Components\Textarea::make('next_action')->label('Next Action')->rows(3)->columnSpanFull(),
             ]),
         ]);
     }
@@ -46,26 +45,29 @@ class FollowUpResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('creator.nickname')->label('达人')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('channel')->label('渠道')->badge(),
-                Tables\Columns\TextColumn::make('content')->label('内容')->limit(40)->searchable(),
-                Tables\Columns\TextColumn::make('contacted_at')->label('沟通时间')->dateTime('Y-m-d H:i')->sortable(),
-                Tables\Columns\TextColumn::make('next_follow_up_at')->label('下次跟进')->dateTime('Y-m-d H:i')->sortable(),
-                Tables\Columns\TextColumn::make('user.name')->label('跟进人'),
+                Tables\Columns\TextColumn::make('creator.nickname')->label('Creator')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('channel')->label('Channel')->badge(),
+                Tables\Columns\TextColumn::make('contacted_at')->label('Contacted At')->dateTime('Y-m-d H:i')->sortable(),
+                Tables\Columns\TextColumn::make('next_follow_up_at')->label('Next Follow-up')->dateTime('Y-m-d H:i')->sortable(),
+                Tables\Columns\TextColumn::make('user.name')->label('User'),
             ])
-            ->defaultSort('contacted_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('channel')->label('渠道')->options([
-                    'wechat' => '微信',
-                    'phone' => '电话',
-                    'douyin' => '抖音私信',
-                    'taobao' => '淘宝',
-                    'feishu' => '飞书',
-                    'other' => '其他',
+                Tables\Filters\SelectFilter::make('channel')->label('Channel')->options([
+                    'wechat' => 'WeChat',
+                    'phone' => 'Phone',
+                    'douyin' => 'Douyin',
+                    'taobao' => 'Taobao',
+                    'other' => 'Other',
                 ]),
             ])
-            ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\BulkActionGroup::make([Tables\Actions\DeleteBulkAction::make()])]);
+            ->actions([
+                Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
     }
 
     public static function getPages(): array
