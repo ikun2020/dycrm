@@ -14,9 +14,9 @@ class CreatorImporter extends Importer
     public static function getColumns(): array
     {
         return [
-            ImportColumn::make('nickname')->label(__('Nickname Required'))->requiredMapping()->rules(['required', 'max:255'])->example('example_creator'),
-            ImportColumn::make('platform')->label(__('Platform Required'))->requiredMapping()->rules(['required', 'max:255'])->example(__('Douyin')),
-            ImportColumn::make('platform_uid')->label(__('Platform UID'))->rules(['nullable', 'max:255']),
+            ImportColumn::make('nickname')->label(__('Nickname Required'))->requiredMapping()->rules(['required', 'max:255'])->guess(['达人昵称', '达人昵称（必填）', '昵称', 'nickname'])->exampleHeader(__('Nickname Required'))->example('example_creator'),
+            ImportColumn::make('platform')->label(__('Platform Required'))->requiredMapping()->rules(['required', 'max:255'])->guess(['平台', '平台（必填）', '平台（必填：抖音/小红书/视频号/快手/其他）', 'platform'])->exampleHeader(__('Platform Required'))->example(__('Douyin')),
+            ImportColumn::make('platform_uid')->label(__('Platform UID'))->rules(['nullable', 'max:255'])->guess(['平台账号', '平台账号/UID', 'UID', '账号', '平台账号/手机号']),
             ImportColumn::make('phone')->label(__('Phone'))->rules(['nullable', 'max:255']),
             ImportColumn::make('wechat')->label(__('WeChat'))->rules(['nullable', 'max:255']),
             ImportColumn::make('agency_name')->label(__('Agency / Company'))->rules(['nullable', 'max:255']),
@@ -57,10 +57,11 @@ class CreatorImporter extends Importer
         $platform = trim((string) $platform);
 
         return match (mb_strtolower($platform)) {
-            'douyin', 'dy', __('Douyin') => 'douyin',
-            'xiaohongshu', 'xhs', __('Xiaohongshu') => 'xiaohongshu',
-            'shipinhao', 'sph', __('Shipinhao') => 'shipinhao',
-            'kuaishou', 'ks', __('Kuaishou') => 'kuaishou',
+            'douyin', 'dy', '抖音', __('Douyin') => 'douyin',
+            'xiaohongshu', 'xhs', '小红书', __('Xiaohongshu') => 'xiaohongshu',
+            'shipinhao', 'sph', '视频号', __('Shipinhao') => 'shipinhao',
+            'kuaishou', 'ks', '快手', __('Kuaishou') => 'kuaishou',
+            'other', '其他', __('Other') => 'other',
             default => 'other',
         };
     }
@@ -70,16 +71,16 @@ class CreatorImporter extends Importer
         $status = trim((string) $status);
 
         return match (mb_strtolower($status)) {
-            'to_develop', __('To Develop') => 'to_develop',
-            'contacted', __('Contacted') => 'contacted',
-            'communicating', __('Communicating') => 'communicating',
-            'sample_sent', __('Sample Sent') => 'sample_sent',
-            'scheduled', __('Scheduled') => 'scheduled',
-            'live', __('Live') => 'live',
-            'reviewed', __('Reviewed') => 'reviewed',
-            'long_term', __('Long-term') => 'long_term',
-            'paused', __('Paused') => 'paused',
-            'invalid', __('Invalid') => 'invalid',
+            'to_develop', '待开发', __('To Develop') => 'to_develop',
+            'contacted', '已联系', __('Contacted') => 'contacted',
+            'communicating', '沟通中', __('Communicating') => 'communicating',
+            'sample_sent', '已寄样', __('Sample Sent') => 'sample_sent',
+            'scheduled', '已排期', __('Scheduled') => 'scheduled',
+            'live', '直播中', __('Live') => 'live',
+            'reviewed', '已复盘', __('Reviewed') => 'reviewed',
+            'long_term', '长期合作', __('Long-term') => 'long_term',
+            'paused', '暂停合作', __('Paused') => 'paused',
+            'invalid', '无效达人', __('Invalid') => 'invalid',
             default => 'to_develop',
         };
     }

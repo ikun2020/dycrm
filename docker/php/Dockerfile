@@ -49,7 +49,12 @@ RUN composer validate --no-check-publish \
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+COPY docker/entrypoint.sh /usr/local/bin/dycrm-entrypoint
+
+RUN chmod +x /usr/local/bin/dycrm-entrypoint
 
 EXPOSE 80
 
+ENTRYPOINT ["dycrm-entrypoint"]
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
