@@ -38,7 +38,7 @@ COPY . /var/www/html
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 RUN composer validate --no-check-publish \
-    && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts --no-audit \
+    && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts --no-security-blocking \
     && php artisan package:discover --ansi \
     && mkdir -p storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
