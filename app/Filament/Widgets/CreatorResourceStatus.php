@@ -25,7 +25,8 @@ class CreatorResourceStatus
     {
         return match ($platform) {
             'douyin' => __('Douyin'),
-            'taobao' => __('Taobao'),
+            'xiaohongshu' => __('Xiaohongshu'),
+            'shipinhao' => __('Shipinhao'),
             'kuaishou' => __('Kuaishou'),
             'other' => __('Other'),
             default => (string) $platform,

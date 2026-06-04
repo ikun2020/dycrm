@@ -10,13 +10,10 @@ class Creator extends Model
 {
     protected $fillable = [
         'nickname',
-        'real_name',
         'platform',
         'platform_uid',
-        'homepage_url',
         'phone',
         'wechat',
-        'region',
         'agency_name',
         'category',
         'followers_count',

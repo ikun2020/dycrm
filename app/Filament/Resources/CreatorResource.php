@@ -25,11 +25,8 @@ class CreatorResource extends Resource
         return $form->schema([
             Forms\Components\Section::make(__('Basic Profile'))->columns(3)->schema([
                 Forms\Components\TextInput::make('nickname')->label(__('Nickname'))->required()->maxLength(255),
-                Forms\Components\TextInput::make('real_name')->label(__('Real Name'))->maxLength(255),
                 Forms\Components\Select::make('platform')->label(__('Platform'))->required()->options(self::platformOptions())->default('douyin'),
                 Forms\Components\TextInput::make('platform_uid')->label(__('Platform UID'))->maxLength(255),
-                Forms\Components\TextInput::make('homepage_url')->label(__('Homepage URL'))->url()->maxLength(255),
-                Forms\Components\TextInput::make('region')->label(__('Region'))->maxLength(255),
                 Forms\Components\TextInput::make('phone')->label(__('Phone'))->tel()->maxLength(255),
                 Forms\Components\TextInput::make('wechat')->label(__('WeChat'))->maxLength(255),
                 Forms\Components\TextInput::make('agency_name')->label(__('Agency / Company'))->maxLength(255),
@@ -76,8 +73,65 @@ class CreatorResource extends Resource
                 Tables\Filters\SelectFilter::make('platform')->label(__('Platform'))->options(self::platformOptions()),
             ])
             ->headerActions([
+                Tables\Actions\Action::make('downloadCreatorImportTemplate')
+                    ->label(__('Download Import Template'))
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->action(fn () => response()->streamDownload(function (): void {
+                        $handle = fopen('php://output', 'w');
+
+                        echo "\xEF\xBB\xBF";
+
+                        fputcsv($handle, [
+                            __('Nickname Required'),
+                            __('Platform Required'),
+                            __('Platform UID'),
+                            __('Phone'),
+                            __('WeChat'),
+                            __('Agency / Company'),
+                            __('Category'),
+                            __('Followers'),
+                            __('Average Viewers'),
+                            __('Average Order Value'),
+                            __('Quote Fee'),
+                            __('Commission Rate'),
+                            __('Status'),
+                            __('Tags'),
+                            __('AI Score'),
+                            __('Grade'),
+                            __('AI Summary'),
+                            __('Notes'),
+                            __('Last Contacted At'),
+                            __('Next Follow-up At'),
+                        ]);
+
+                        fputcsv($handle, [
+                            'example_creator',
+                            __('Douyin'),
+                            '123456789',
+                            '13800000000',
+                            'wechat_id',
+                            'example_agency',
+                            'beauty',
+                            '100000',
+                            '5000',
+                            '99',
+                            '3000',
+                            '20',
+                            __('To Develop'),
+                            'skincare,high-conversion',
+                            '80',
+                            'A',
+                            'high conversion potential',
+                            'sample notes',
+                            now()->subDay()->format('Y-m-d H:i:s'),
+                            now()->addDays(3)->format('Y-m-d H:i:s'),
+                        ]);
+
+                        fclose($handle);
+                    }, 'creator-import-template.csv', ['Content-Type' => 'text/csv; charset=UTF-8'])),
                 Tables\Actions\ImportAction::make()
                     ->label(__('Import Creators'))
+                    ->modalDescription(__('Creator Import Help'))
                     ->importer(CreatorImporter::class),
                 Tables\Actions\ExportAction::make()
                     ->label(__('Export Creators'))
@@ -125,7 +179,8 @@ class CreatorResource extends Resource
     {
         return [
             'douyin' => __('Douyin'),
-            'taobao' => __('Taobao'),
+            'xiaohongshu' => __('Xiaohongshu'),
+            'shipinhao' => __('Shipinhao'),
             'kuaishou' => __('Kuaishou'),
             'other' => __('Other'),
         ];

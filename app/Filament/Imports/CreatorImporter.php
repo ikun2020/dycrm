@@ -14,14 +14,11 @@ class CreatorImporter extends Importer
     public static function getColumns(): array
     {
         return [
-            ImportColumn::make('nickname')->label(__('Nickname'))->requiredMapping()->rules(['required', 'max:255'])->example('skincare_creator'),
-            ImportColumn::make('real_name')->label(__('Real Name'))->rules(['nullable', 'max:255']),
-            ImportColumn::make('platform')->label(__('Platform'))->requiredMapping()->rules(['required', 'in:douyin,taobao,kuaishou,other'])->example('douyin'),
+            ImportColumn::make('nickname')->label(__('Nickname Required'))->requiredMapping()->rules(['required', 'max:255'])->example('example_creator'),
+            ImportColumn::make('platform')->label(__('Platform Required'))->requiredMapping()->rules(['required', 'max:255'])->example(__('Douyin')),
             ImportColumn::make('platform_uid')->label(__('Platform UID'))->rules(['nullable', 'max:255']),
-            ImportColumn::make('homepage_url')->label(__('Homepage URL'))->rules(['nullable', 'url', 'max:255']),
             ImportColumn::make('phone')->label(__('Phone'))->rules(['nullable', 'max:255']),
             ImportColumn::make('wechat')->label(__('WeChat'))->rules(['nullable', 'max:255']),
-            ImportColumn::make('region')->label(__('Region'))->rules(['nullable', 'max:255']),
             ImportColumn::make('agency_name')->label(__('Agency / Company'))->rules(['nullable', 'max:255']),
             ImportColumn::make('category')->label(__('Category'))->rules(['nullable', 'max:255']),
             ImportColumn::make('followers_count')->label(__('Followers'))->integer()->rules(['nullable', 'integer', 'min:0']),
@@ -37,12 +34,14 @@ class CreatorImporter extends Importer
             ImportColumn::make('notes')->label(__('Notes'))->rules(['nullable', 'max:2000']),
             ImportColumn::make('last_contacted_at')->label(__('Last Contacted At'))->rules(['nullable', 'date']),
             ImportColumn::make('next_follow_up_at')->label(__('Next Follow-up At'))->rules(['nullable', 'date']),
-            ImportColumn::make('owner')->label(__('Owner Email'))->relationship(resolveUsing: 'email'),
         ];
     }
 
     public function resolveRecord(): ?Creator
     {
+        $this->data['platform'] = self::normalizePlatform($this->data['platform'] ?? null);
+        $this->data['cooperation_status'] = self::normalizeStatus($this->data['cooperation_status'] ?? null);
+
         if (filled($this->data['platform_uid'] ?? null)) {
             return Creator::firstOrNew([
                 'platform' => $this->data['platform'] ?? 'douyin',
@@ -51,6 +50,38 @@ class CreatorImporter extends Importer
         }
 
         return new Creator();
+    }
+
+    private static function normalizePlatform(?string $platform): string
+    {
+        $platform = trim((string) $platform);
+
+        return match (mb_strtolower($platform)) {
+            'douyin', 'dy', __('Douyin') => 'douyin',
+            'xiaohongshu', 'xhs', __('Xiaohongshu') => 'xiaohongshu',
+            'shipinhao', 'sph', __('Shipinhao') => 'shipinhao',
+            'kuaishou', 'ks', __('Kuaishou') => 'kuaishou',
+            default => 'other',
+        };
+    }
+
+    private static function normalizeStatus(?string $status): string
+    {
+        $status = trim((string) $status);
+
+        return match (mb_strtolower($status)) {
+            'to_develop', __('To Develop') => 'to_develop',
+            'contacted', __('Contacted') => 'contacted',
+            'communicating', __('Communicating') => 'communicating',
+            'sample_sent', __('Sample Sent') => 'sample_sent',
+            'scheduled', __('Scheduled') => 'scheduled',
+            'live', __('Live') => 'live',
+            'reviewed', __('Reviewed') => 'reviewed',
+            'long_term', __('Long-term') => 'long_term',
+            'paused', __('Paused') => 'paused',
+            'invalid', __('Invalid') => 'invalid',
+            default => 'to_develop',
+        };
     }
 
     public static function getCompletedNotificationBody(Import $import): string

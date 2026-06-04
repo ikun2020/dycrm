@@ -15,13 +15,10 @@ class CreatorExporter extends Exporter
     {
         return [
             ExportColumn::make('nickname')->label(__('Nickname')),
-            ExportColumn::make('real_name')->label(__('Real Name')),
             ExportColumn::make('platform')->label(__('Platform')),
             ExportColumn::make('platform_uid')->label(__('Platform UID')),
-            ExportColumn::make('homepage_url')->label(__('Homepage URL')),
             ExportColumn::make('phone')->label(__('Phone')),
             ExportColumn::make('wechat')->label(__('WeChat')),
-            ExportColumn::make('region')->label(__('Region')),
             ExportColumn::make('agency_name')->label(__('Agency / Company')),
             ExportColumn::make('category')->label(__('Category')),
             ExportColumn::make('followers_count')->label(__('Followers')),
