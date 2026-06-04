@@ -20,7 +20,6 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-install \
     bcmath \
     curl \
-    dom \
     exif \
     gd \
     intl \
@@ -28,10 +27,6 @@ RUN docker-php-ext-install \
     opcache \
     pcntl \
     pdo_mysql \
-    simplexml \
-    xml \
-    xmlreader \
-    xmlwriter \
     zip
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
