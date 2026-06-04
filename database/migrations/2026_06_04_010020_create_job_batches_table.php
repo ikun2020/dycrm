@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('job_batches')) {
+            return;
+        }
+
         Schema::create('job_batches', function (Blueprint $table): void {
             $table->string('id')->primary();
             $table->string('name');
@@ -24,6 +28,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('job_batches');
+        //
     }
 };
