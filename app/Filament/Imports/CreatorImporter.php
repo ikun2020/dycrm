@@ -14,33 +14,30 @@ class CreatorImporter extends Importer
     public static function getColumns(): array
     {
         return [
-            ImportColumn::make('nickname')->label(__('Nickname Required'))->requiredMapping()->rules(['required', 'max:255'])->guess(['达人昵称', '达人昵称（必填）', '昵称', 'nickname'])->exampleHeader(__('Nickname Required'))->example('example_creator'),
-            ImportColumn::make('platform')->label(__('Platform Required'))->requiredMapping()->rules(['required', 'max:255'])->guess(['平台', '平台（必填）', '平台（必填：抖音/小红书/视频号/快手/其他）', 'platform'])->exampleHeader(__('Platform Required'))->example(__('Douyin')),
-            ImportColumn::make('platform_uid')->label(__('Platform UID'))->rules(['nullable', 'max:255'])->guess(['平台账号', '平台账号/UID', 'UID', '账号', '平台账号/手机号']),
-            ImportColumn::make('phone')->label(__('Phone'))->rules(['nullable', 'max:255']),
-            ImportColumn::make('wechat')->label(__('WeChat'))->rules(['nullable', 'max:255']),
-            ImportColumn::make('agency_name')->label(__('Agency / Company'))->rules(['nullable', 'max:255']),
-            ImportColumn::make('category')->label(__('Category'))->rules(['nullable', 'max:255']),
-            ImportColumn::make('followers_count')->label(__('Followers'))->integer()->rules(['nullable', 'integer', 'min:0']),
-            ImportColumn::make('avg_viewers')->label(__('Average Viewers'))->integer()->rules(['nullable', 'integer', 'min:0']),
-            ImportColumn::make('avg_order_value')->label(__('Average Order Value'))->numeric(decimalPlaces: 2)->rules(['nullable', 'numeric', 'min:0']),
-            ImportColumn::make('quote_fee')->label(__('Quote Fee'))->numeric(decimalPlaces: 2)->rules(['nullable', 'numeric', 'min:0']),
-            ImportColumn::make('commission_rate')->label(__('Commission Rate'))->numeric(decimalPlaces: 2)->rules(['nullable', 'numeric', 'min:0', 'max:100']),
-            ImportColumn::make('cooperation_status')->label(__('Status'))->rules(['nullable', 'max:255'])->example('to_develop'),
-            ImportColumn::make('tags')->label(__('Tags'))->array(',')->rules(['nullable', 'array'])->example('skincare,high-conversion'),
-            ImportColumn::make('ai_score')->label(__('AI Score'))->integer()->rules(['nullable', 'integer', 'min:0', 'max:100']),
-            ImportColumn::make('ai_grade')->label(__('Grade'))->rules(['nullable', 'max:10']),
-            ImportColumn::make('ai_summary')->label(__('AI Summary'))->rules(['nullable', 'max:1000']),
-            ImportColumn::make('notes')->label(__('Notes'))->rules(['nullable', 'max:2000']),
-            ImportColumn::make('last_contacted_at')->label(__('Last Contacted At'))->rules(['nullable', 'date']),
-            ImportColumn::make('next_follow_up_at')->label(__('Next Follow-up At'))->rules(['nullable', 'date']),
+            ImportColumn::make('platform')->label('平台')->requiredMapping()->rules(['required', 'max:255'])->guess(['平台', 'platform'])->example('抖音'),
+            ImportColumn::make('nickname')->label('达人昵称')->requiredMapping()->rules(['required', 'max:255'])->guess(['达人昵称', '昵称', 'nickname'])->example('示例达人'),
+            ImportColumn::make('agency_name')->label('MCN机构')->rules(['nullable', 'max:255'])->guess(['MCN机构', '机构', '公司']),
+            ImportColumn::make('region')->label('地区')->rules(['nullable', 'max:255'])->guess(['地区', '区域']),
+            ImportColumn::make('creator_type')->label('达人类型')->rules(['nullable', 'max:255'])->guess(['达人类型', '类型']),
+            ImportColumn::make('platform_uid')->label('UID')->requiredMapping()->rules(['required', 'max:255'])->guess(['UID', '平台账号/UID', '平台账号', '账号', '抖音号']),
+            ImportColumn::make('followers_count')->label('粉丝数')->integer()->rules(['nullable', 'integer', 'min:0']),
+            ImportColumn::make('follower_tier')->label('粉丝量级')->rules(['nullable', 'max:255']),
+            ImportColumn::make('primary_category')->label('主营类型')->rules(['nullable', 'max:255']),
+            ImportColumn::make('reputation_score')->label('口碑分')->numeric(decimalPlaces: 2)->rules(['nullable', 'numeric', 'min:0']),
+            ImportColumn::make('avg_sales_amount')->label('场均销售额')->numeric(decimalPlaces: 2)->rules(['nullable', 'numeric', 'min:0']),
+            ImportColumn::make('daily_sales_amount')->label('日均销售额')->numeric(decimalPlaces: 2)->rules(['nullable', 'numeric', 'min:0']),
+            ImportColumn::make('avg_order_value')->label('客单价')->numeric(decimalPlaces: 2)->rules(['nullable', 'numeric', 'min:0']),
+            ImportColumn::make('male_fan_ratio')->label('男粉占比')->numeric(decimalPlaces: 4)->rules(['nullable', 'numeric', 'min:0', 'max:1']),
+            ImportColumn::make('female_fan_ratio')->label('女粉占比')->numeric(decimalPlaces: 4)->rules(['nullable', 'numeric', 'min:0', 'max:1']),
+            ImportColumn::make('gender_tendency')->label('性别倾向')->rules(['nullable', 'max:255']),
+            ImportColumn::make('province_overview')->label('省份概览')->rules(['nullable', 'max:2000']),
+            ImportColumn::make('city_overview')->label('城市概览')->rules(['nullable', 'max:2000']),
         ];
     }
 
     public function resolveRecord(): ?Creator
     {
         $this->data['platform'] = self::normalizePlatform($this->data['platform'] ?? null);
-        $this->data['cooperation_status'] = self::normalizeStatus($this->data['cooperation_status'] ?? null);
 
         if (filled($this->data['platform_uid'] ?? null)) {
             return Creator::firstOrNew([
@@ -49,39 +46,17 @@ class CreatorImporter extends Importer
             ]);
         }
 
-        return new Creator();
+        return new Creator;
     }
 
     private static function normalizePlatform(?string $platform): string
     {
-        $platform = trim((string) $platform);
-
-        return match (mb_strtolower($platform)) {
+        return match (mb_strtolower(trim((string) $platform))) {
             'douyin', 'dy', '抖音', __('Douyin') => 'douyin',
             'xiaohongshu', 'xhs', '小红书', __('Xiaohongshu') => 'xiaohongshu',
             'shipinhao', 'sph', '视频号', __('Shipinhao') => 'shipinhao',
             'kuaishou', 'ks', '快手', __('Kuaishou') => 'kuaishou',
-            'other', '其他', __('Other') => 'other',
             default => 'other',
-        };
-    }
-
-    private static function normalizeStatus(?string $status): string
-    {
-        $status = trim((string) $status);
-
-        return match (mb_strtolower($status)) {
-            'to_develop', '待开发', __('To Develop') => 'to_develop',
-            'contacted', '已联系', __('Contacted') => 'contacted',
-            'communicating', '沟通中', __('Communicating') => 'communicating',
-            'sample_sent', '已寄样', __('Sample Sent') => 'sample_sent',
-            'scheduled', '已排期', __('Scheduled') => 'scheduled',
-            'live', '直播中', __('Live') => 'live',
-            'reviewed', '已复盘', __('Reviewed') => 'reviewed',
-            'long_term', '长期合作', __('Long-term') => 'long_term',
-            'paused', '暂停合作', __('Paused') => 'paused',
-            'invalid', '无效达人', __('Invalid') => 'invalid',
-            default => 'to_develop',
         };
     }
 

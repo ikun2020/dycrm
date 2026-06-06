@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AiSettingResource\Pages;
 
 use App\Filament\Resources\AiSettingResource;
+use App\Models\AiSetting;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -13,7 +14,8 @@ class ListAiSettings extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->visible(fn (): bool => ! AiSetting::query()->exists()),
         ];
     }
 }

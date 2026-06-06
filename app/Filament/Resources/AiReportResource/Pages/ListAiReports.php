@@ -18,6 +18,7 @@ class ListAiReports extends ListRecords
             Actions\Action::make('generateAiReport')
                 ->label(__('Generate AI Report'))
                 ->icon('heroicon-o-sparkles')
+                ->visible(fn (): bool => AiReportResource::canCreate())
                 ->modalHeading(__('AI Rating'))
                 ->modalWidth('5xl')
                 ->modalSubmitAction(false)

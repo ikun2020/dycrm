@@ -12,6 +12,9 @@ class EditLiveSession extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [Actions\DeleteAction::make()];
+        return [
+            Actions\DeleteAction::make()
+                ->visible(fn (): bool => LiveSessionResource::canDelete($this->record)),
+        ];
     }
 }

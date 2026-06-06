@@ -12,6 +12,9 @@ class EditAiReport extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [Actions\DeleteAction::make()];
+        return [
+            Actions\DeleteAction::make()
+                ->visible(fn (): bool => AiReportResource::canDelete($this->record)),
+        ];
     }
 }

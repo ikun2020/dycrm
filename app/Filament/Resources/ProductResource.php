@@ -2,37 +2,55 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\ChecksMenuPermission;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
 class ProductResource extends Resource
 {
-    protected static ?string $model = Product::class;
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
-    protected static ?string $navigationGroup = "\u{5546}\u{54C1}\u{4E0E}\u{6837}\u{54C1}";
-    protected static ?string $modelLabel = "\u{5546}\u{54C1}";
-    protected static ?string $pluralModelLabel = "\u{5546}\u{54C1}";
+    use ChecksMenuPermission;
 
-    public static function form(Form $form): Form
+    protected static ?string $model = Product::class;
+
+    protected static ?string $menuPermissionKey = 'products';
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
+
+    protected static string|\UnitEnum|null $navigationGroup = '商品与样品';
+
+    protected static ?string $modelLabel = '商品';
+
+    protected static ?string $pluralModelLabel = '商品';
+
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\Section::make(__('Product Info'))->columns(3)->schema([
-                Forms\Components\TextInput::make('name')->label(__('Name'))->required()->maxLength(255),
-                Forms\Components\TextInput::make('brand')->label(__('Brand'))->maxLength(255),
-                Forms\Components\TextInput::make('category')->label(__('Category'))->maxLength(255),
-                Forms\Components\TextInput::make('sku')->label(__('SKU'))->maxLength(255),
-                Forms\Components\TextInput::make('retail_price')->label(__('Retail Price'))->numeric()->prefix('CNY')->default(0),
-                Forms\Components\TextInput::make('cost_price')->label(__('Cost Price'))->numeric()->prefix('CNY')->default(0),
-                Forms\Components\TextInput::make('commission_rate')->label(__('Commission Rate'))->numeric()->suffix('%')->default(0),
-                Forms\Components\Select::make('status')->label(__('Status'))->options(self::statusOptions())->default('active'),
-                Forms\Components\Textarea::make('selling_points')->label(__('Selling Points'))->rows(4)->columnSpanFull(),
-                Forms\Components\Textarea::make('notes')->label(__('Notes'))->rows(3)->columnSpanFull(),
-            ]),
+        return $schema->components([
+            Section::make(__('Product Info'))
+                ->description('维护用于销售和达人匹配的商品资料、价格、佣金和卖点。')
+                ->icon('heroicon-o-shopping-bag')
+                ->columnSpanFull()
+                ->columns(['md' => 2, 'xl' => 3])
+                ->components([
+                    Forms\Components\TextInput::make('name')->label(__('Name'))->required()->maxLength(255),
+                    Forms\Components\TextInput::make('brand')->label(__('Brand'))->maxLength(255),
+                    Forms\Components\TextInput::make('category')->label(__('Category'))->maxLength(255),
+                    Forms\Components\TextInput::make('sku')->label(__('SKU'))->maxLength(255),
+                    Forms\Components\TextInput::make('retail_price')->label(__('Retail Price'))->numeric()->prefix('CNY')->default(0),
+                    Forms\Components\TextInput::make('cost_price')->label(__('Cost Price'))->numeric()->prefix('CNY')->default(0),
+                    Forms\Components\TextInput::make('commission_rate')->label(__('Commission Rate'))->numeric()->suffix('%')->default(0),
+                    Forms\Components\Select::make('status')->label(__('Status'))->options(self::statusOptions())->default('active'),
+                    Forms\Components\Textarea::make('selling_points')->label(__('Selling Points'))->rows(4)->columnSpanFull(),
+                    Forms\Components\Textarea::make('notes')->label(__('Notes'))->rows(3)->columnSpanFull(),
+                ]),
         ]);
     }
 
@@ -45,17 +63,34 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('category')->label(__('Category'))->searchable(),
                 Tables\Columns\TextColumn::make('retail_price')->label(__('Retail Price'))->money('CNY')->sortable(),
                 Tables\Columns\TextColumn::make('commission_rate')->label(__('Commission'))->suffix('%')->sortable(),
-                Tables\Columns\TextColumn::make('status')->label(__('Status'))->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('Status'))
+                    ->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state)
+                    ->badge()
+                    ->icon(fn (string $state): string => match ($state) {
+                        'active' => 'heroicon-o-check-circle',
+                        'inactive' => 'heroicon-o-x-circle',
+                        'draft' => 'heroicon-o-document',
+                        default => 'heroicon-o-question-mark-circle',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'danger',
+                        'draft' => 'gray',
+                        default => 'gray',
+                    }),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->label(__('Status'))->options(self::statusOptions()),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record): bool => self::canEdit($record)),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => self::canDeleteAny()),
                 ]),
             ]);
     }

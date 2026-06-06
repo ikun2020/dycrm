@@ -8,9 +8,10 @@ use App\Models\Product;
 use App\Services\CreatorAiScoringService;
 use Filament\Actions\Action;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
@@ -18,13 +19,15 @@ class CreateAiReport extends CreateRecord
 {
     protected static string $resource = AiReportResource::class;
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\Section::make(__('Generate AI Report'))
+        return $schema->components([
+            Section::make(__('Generate AI Report'))
                 ->description(__('Select a creator and product, then the system will generate an AI diagnosis report and update the creator score.'))
+                ->icon('heroicon-o-sparkles')
+                ->columnSpanFull()
                 ->columns(2)
-                ->schema([
+                ->components([
                     Forms\Components\Select::make('creator_id')
                         ->label(__('Creator'))
                         ->options(fn () => Creator::query()->orderByDesc('id')->pluck('nickname', 'id'))
@@ -50,7 +53,7 @@ class CreateAiReport extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         try {
-            return app(CreatorAiScoringService::class)->score(
+            return app(CreatorAiScoringService::class)->queueScore(
                 Creator::query()->findOrFail($data['creator_id']),
                 auth()->user(),
                 (int) $data['product_id'],
@@ -76,6 +79,6 @@ class CreateAiReport extends CreateRecord
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return __('AI Report Generated');
+        return __('AI Report Queued');
     }
 }

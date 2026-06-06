@@ -12,6 +12,9 @@ class EditGmvRecord extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [Actions\DeleteAction::make()];
+        return [
+            Actions\DeleteAction::make()
+                ->visible(fn (): bool => GmvRecordResource::canDelete($this->record)),
+        ];
     }
 }

@@ -2,40 +2,58 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\ChecksMenuPermission;
 use App\Filament\Resources\LiveSessionResource\Pages;
 use App\Models\LiveSession;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
 class LiveSessionResource extends Resource
 {
+    use ChecksMenuPermission;
+
     protected static ?string $model = LiveSession::class;
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?string $navigationGroup = "\u{6392}\u{671F}\u{4E0E}\u{4E1A}\u{7EE9}";
+
+    protected static ?string $menuPermissionKey = 'live-sessions';
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
+
+    protected static string|\UnitEnum|null $navigationGroup = "\u{6392}\u{671F}\u{4E0E}\u{4E1A}\u{7EE9}";
+
     protected static ?string $modelLabel = "\u{76F4}\u{64AD}\u{6392}\u{671F}";
+
     protected static ?string $pluralModelLabel = "\u{76F4}\u{64AD}\u{6392}\u{671F}";
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\Section::make(__('Live Plan'))->columns(3)->schema([
-                Forms\Components\Select::make('creator_id')->label(__('Creator'))->relationship('creator', 'nickname')->searchable()->preload()->required(),
-                Forms\Components\Select::make('product_id')->label(__('Product'))->relationship('product', 'name')->searchable()->preload(),
-                Forms\Components\TextInput::make('title')->label(__('Title'))->required()->maxLength(255),
-                Forms\Components\DateTimePicker::make('starts_at')->label(__('Starts At'))->seconds(false)->required(),
-                Forms\Components\DateTimePicker::make('ends_at')->label(__('Ends At'))->seconds(false),
-                Forms\Components\Select::make('status')->label(__('Status'))->options(self::statusOptions())->default('scheduled'),
-                Forms\Components\TextInput::make('slot_fee')->label(__('Slot Fee'))->numeric()->prefix('CNY')->default(0),
-                Forms\Components\TextInput::make('commission_rate')->label(__('Commission Rate'))->numeric()->suffix('%')->default(0),
-                Forms\Components\Select::make('owner_id')->label(__('Owner'))->relationship('owner', 'name')->searchable()->preload(),
-                Forms\Components\DateTimePicker::make('pre_live_remind_at')->label(__('Pre-live Reminder'))->seconds(false),
-                Forms\Components\DateTimePicker::make('review_remind_at')->label(__('Review Reminder'))->seconds(false),
-                Forms\Components\Textarea::make('script_notes')->label(__('Script Notes'))->rows(4)->columnSpanFull(),
-                Forms\Components\Textarea::make('review_notes')->label(__('Review Notes'))->rows(4)->columnSpanFull(),
-            ]),
+        return $schema->components([
+            Section::make(__('Live Plan'))
+                ->description('管理直播排期、费用、佣金和复盘提醒，保证直播前后动作闭环。')
+                ->icon('heroicon-o-calendar-days')
+                ->columnSpanFull()
+                ->columns(['md' => 2, 'xl' => 3])
+                ->components([
+                    Forms\Components\Select::make('creator_id')->label(__('Creator'))->relationship('creator', 'nickname')->searchable()->preload()->required(),
+                    Forms\Components\Select::make('product_id')->label(__('Product'))->relationship('product', 'name')->searchable()->preload(),
+                    Forms\Components\TextInput::make('title')->label(__('Title'))->required()->maxLength(255),
+                    Forms\Components\DateTimePicker::make('starts_at')->label(__('Starts At'))->seconds(false)->required(),
+                    Forms\Components\DateTimePicker::make('ends_at')->label(__('Ends At'))->seconds(false),
+                    Forms\Components\Select::make('status')->label(__('Status'))->options(self::statusOptions())->default('scheduled'),
+                    Forms\Components\TextInput::make('slot_fee')->label(__('Slot Fee'))->numeric()->prefix('CNY')->default(0),
+                    Forms\Components\TextInput::make('commission_rate')->label(__('Commission Rate'))->numeric()->suffix('%')->default(0),
+                    Forms\Components\Select::make('owner_id')->label(__('Owner'))->relationship('owner', 'name')->searchable()->preload(),
+                    Forms\Components\DateTimePicker::make('pre_live_remind_at')->label(__('Pre-live Reminder'))->seconds(false),
+                    Forms\Components\DateTimePicker::make('review_remind_at')->label(__('Review Reminder'))->seconds(false),
+                    Forms\Components\Textarea::make('script_notes')->label(__('Script Notes'))->rows(4)->columnSpanFull(),
+                    Forms\Components\Textarea::make('review_notes')->label(__('Review Notes'))->rows(4)->columnSpanFull(),
+                ]),
         ]);
     }
 
@@ -55,11 +73,13 @@ class LiveSessionResource extends Resource
                 Tables\Filters\SelectFilter::make('status')->label(__('Status'))->options(self::statusOptions()),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record): bool => self::canEdit($record)),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => self::canDeleteAny()),
                 ]),
             ]);
     }

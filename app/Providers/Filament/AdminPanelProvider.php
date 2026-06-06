@@ -2,6 +2,14 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\BusinessOverviewWidget;
+use App\Filament\Widgets\CreatorValueLeaderboardWidget;
+use App\Filament\Widgets\FollowUpAlertWidget;
+use App\Filament\Widgets\FulfillmentMonitorWidget;
+use App\Filament\Widgets\InviteConflictWidget;
+use App\Filament\Widgets\TeamPerformanceWidget;
+use App\Support\ThemeColor;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -10,6 +18,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -32,8 +41,20 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Rose,
             ])
             ->renderHook(
+                'panels::head.end',
+                fn (): string => '<link rel="stylesheet" href="'.asset('css/dycrm-admin.css').'?v=20260606-5">'
+                    .ThemeColor::styleTagForUser(auth()->user())->toHtml(),
+            )
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_PROFILE_AFTER,
+                fn (): string => view('filament.user-menu.theme-color-picker', [
+                    'currentColor' => ThemeColor::normalize(Filament::auth()->user()?->theme_color),
+                    'options' => ThemeColor::options(),
+                ])->render(),
+            )
+            ->renderHook(
                 'panels::body.end',
-                fn (): string => '<script src="'.asset('js/creator-ai-diagnosis.js').'?v=20260605-6"></script>',
+                fn (): string => '<script src="'.asset('js/creator-ai-diagnosis.js').'?v=20260606-2"></script>',
             )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -42,12 +63,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                \App\Filament\Widgets\BusinessOverviewWidget::class,
-                \App\Filament\Widgets\FollowUpAlertWidget::class,
-                \App\Filament\Widgets\InviteConflictWidget::class,
-                \App\Filament\Widgets\FulfillmentMonitorWidget::class,
-                \App\Filament\Widgets\TeamPerformanceWidget::class,
-                \App\Filament\Widgets\CreatorValueLeaderboardWidget::class,
+                BusinessOverviewWidget::class,
+                FollowUpAlertWidget::class,
+                InviteConflictWidget::class,
+                FulfillmentMonitorWidget::class,
+                TeamPerformanceWidget::class,
+                CreatorValueLeaderboardWidget::class,
                 Widgets\AccountWidget::class,
             ])
             ->middleware([

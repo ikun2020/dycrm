@@ -9,7 +9,7 @@ services:
     env_file:
       - .env.local
     ports:
-      - "127.0.0.1:${APP_PORT:-3100}:80"
+      - "${APP_PORT:-3100}:80"
     volumes:
       - .:/var/www/html
       - vendor:/var/www/html/vendor
@@ -57,6 +57,8 @@ services:
 
   queue:
     image: ${APP_IMAGE:-dycrm-local-app:latest}
+    deploy:
+      replicas: 3
     restart: unless-stopped
     working_dir: /var/www/html
     env_file:

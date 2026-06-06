@@ -13,7 +13,8 @@ class EditCreator extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->visible(fn (): bool => CreatorResource::canDelete($this->record)),
         ];
     }
 }

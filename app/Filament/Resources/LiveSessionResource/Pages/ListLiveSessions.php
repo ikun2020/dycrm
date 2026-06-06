@@ -12,6 +12,9 @@ class ListLiveSessions extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [Actions\CreateAction::make()];
+        return [
+            Actions\CreateAction::make()
+                ->visible(fn (): bool => LiveSessionResource::canCreate()),
+        ];
     }
 }

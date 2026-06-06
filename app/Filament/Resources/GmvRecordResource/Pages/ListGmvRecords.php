@@ -12,6 +12,9 @@ class ListGmvRecords extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [Actions\CreateAction::make()];
+        return [
+            Actions\CreateAction::make()
+                ->visible(fn (): bool => GmvRecordResource::canCreate()),
+        ];
     }
 }

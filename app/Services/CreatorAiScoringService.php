@@ -2,18 +2,48 @@
 
 namespace App\Services;
 
+use App\Jobs\GenerateCreatorAiScore;
 use App\Models\AiReport;
 use App\Models\AiSetting;
 use App\Models\Creator;
 use App\Models\Product;
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 class CreatorAiScoringService
 {
+    public function queueScore(Creator $creator, ?User $user = null, ?int $productId = null): AiReport
+    {
+        $report = AiReport::query()->create([
+            'creator_id' => $creator->id,
+            'report_type' => 'value_score',
+            'status' => 'pending',
+            'score' => 0,
+            'summary' => 'AI 评分任务已提交，等待后台生成。',
+            'raw_payload' => [
+                'product_id' => $productId,
+                'queued_at' => now()->toIso8601String(),
+            ],
+            'generated_by' => $user?->id,
+            'generated_at' => now(),
+        ]);
+
+        GenerateCreatorAiScore::dispatch($report->id, $creator->id, $user?->id, $productId);
+
+        return $report;
+    }
+
     public function score(Creator $creator, ?User $user = null, ?int $productId = null): AiReport
+    {
+        return $this->scoreIntoReport($creator, $user, $productId);
+    }
+
+    public function scoreIntoReport(Creator $creator, ?User $user = null, ?int $productId = null, ?AiReport $report = null): AiReport
     {
         $setting = AiSetting::current();
 
@@ -21,18 +51,14 @@ class CreatorAiScoringService
 
         $products = $this->activeProducts($productId);
 
-        $creator->loadMissing(['gmvRecords', 'liveSessions', 'samples', 'followUps']);
+        $creator->loadMissing(['gmvRecords', 'liveSessions', 'samples.sampleItem', 'followUps']);
 
         $payload = $this->requestPayload($setting, $creator, $products);
 
-        $response = Http::withToken((string) $setting->api_key)
-            ->acceptJson()
-            ->asJson()
-            ->timeout($setting->timeout)
-            ->post($setting->normalizedBaseUrl().'/chat/completions', $payload);
+        $response = $this->sendCompletionRequest($setting, $payload);
 
         if (! $response->successful()) {
-            throw new RuntimeException('AI API 请求失败：'.$response->status().' '.$response->body());
+            throw new RuntimeException($this->formatApiError($response));
         }
 
         $content = data_get($response->json(), 'choices.0.message.content');
@@ -41,98 +67,20 @@ class CreatorAiScoringService
             throw new RuntimeException('AI API 没有返回可解析的内容。');
         }
 
-        return $this->storeResult($creator, (string) $content, $payload, $response->json(), $user);
+        return $this->storeResult($creator, (string) $content, $payload, $response->json(), $user, $report);
     }
 
-    public function streamScore(Creator $creator, ?User $user, callable $onChunk, ?int $productId = null): AiReport
+    public function streamScore(Creator $creator, ?User $user, callable $onChunk, ?int $productId = null, ?callable $onStatus = null): AiReport
     {
-        $setting = AiSetting::current();
-
-        $this->validateSetting($setting);
-
-        $products = $this->activeProducts($productId);
-        $creator->loadMissing(['gmvRecords', 'liveSessions', 'samples', 'followUps']);
-
-        $payload = $this->requestPayload($setting, $creator, $products);
-        $payload['stream'] = true;
-
-        $content = '';
-        $rawResponse = '';
-        $buffer = '';
-        $httpCode = 0;
-
-        $curl = curl_init($setting->normalizedBaseUrl().'/chat/completions');
-
-        curl_setopt_array($curl, [
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer '.$setting->api_key,
-                'Content-Type: application/json',
-                'Accept: application/json',
-            ],
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            CURLOPT_TIMEOUT => $setting->timeout,
-            CURLOPT_WRITEFUNCTION => function ($curl, string $chunk) use (&$content, &$rawResponse, &$buffer, $onChunk): int {
-                $rawResponse .= $chunk;
-                $buffer .= $chunk;
-
-                while (($position = strpos($buffer, "\n")) !== false) {
-                    $line = trim(substr($buffer, 0, $position));
-                    $buffer = substr($buffer, $position + 1);
-
-                    if ($line === '' || str_starts_with($line, 'event:')) {
-                        continue;
-                    }
-
-                    if (! str_starts_with($line, 'data:')) {
-                        continue;
-                    }
-
-                    $data = trim(substr($line, 5));
-
-                    if ($data === '[DONE]') {
-                        continue;
-                    }
-
-                    $json = json_decode($data, true);
-                    $delta = data_get($json, 'choices.0.delta.content')
-                        ?? data_get($json, 'choices.0.message.content')
-                        ?? '';
-
-                    if ($delta !== '') {
-                        $content .= $delta;
-                        $onChunk($delta);
-                    }
-                }
-
-                return strlen($chunk);
-            },
-        ]);
-
-        $success = curl_exec($curl);
-        $error = curl_error($curl);
-        $httpCode = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-
-        curl_close($curl);
-
-        if ($success === false) {
-            throw new RuntimeException('AI API 流式请求失败：'.$error);
+        if ($onStatus !== null) {
+            $onStatus('正在等待模型返回分析内容...');
         }
 
-        if ($httpCode < 200 || $httpCode >= 300) {
-            throw new RuntimeException('AI API 请求失败：'.$httpCode.' '.$rawResponse);
-        }
+        $report = $this->score($creator, $user, $productId);
 
-        if (blank($content)) {
-            $jsonResponse = json_decode($rawResponse, true);
-            $content = (string) data_get($jsonResponse, 'choices.0.message.content', '');
-        }
+        $onChunk((string) data_get($report->raw_payload, 'content', $report->summary));
 
-        if (blank($content)) {
-            throw new RuntimeException('AI API 没有返回可解析的流式内容。');
-        }
-
-        return $this->storeResult($creator, $content, $payload, ['streamed_content' => $content], $user);
+        return $report;
     }
 
     private function validateSetting(AiSetting $setting): void
@@ -146,7 +94,7 @@ class CreatorAiScoringService
         }
     }
 
-    private function activeProducts(?int $productId = null)
+    private function activeProducts(?int $productId = null): Collection
     {
         $query = Product::query()->where('status', 'active');
 
@@ -167,12 +115,12 @@ class CreatorAiScoringService
         return $products;
     }
 
-    private function storeResult(Creator $creator, string $content, array $payload, array $responsePayload, ?User $user = null): AiReport
+    private function storeResult(Creator $creator, string $content, array $payload, array $responsePayload, ?User $user = null, ?AiReport $report = null): AiReport
     {
         $result = $this->parseResult($content);
         $score = min(10, max(1, (int) ($result['score'] ?? 1)));
-        $grade = $this->normalizeGrade((string) ($result['rating'] ?? $result['grade'] ?? '不适配'), $score);
-        $summary = trim((string) ($result['summary'] ?? ''));
+        $grade = $this->normalizeGrade((string) ($result['rating'] ?? $result['grade'] ?? ''), $score);
+        $summary = trim((string) ($result['summary'] ?? $this->fallbackSummary($content)));
         $riskPoints = $this->stringifyList($result['risk_points'] ?? $result['risks'] ?? []);
         $nextSteps = $this->stringifyList($result['next_steps'] ?? $result['suggestions'] ?? []);
         $generatedAt = now();
@@ -184,14 +132,16 @@ class CreatorAiScoringService
             'ai_scored_at' => $generatedAt,
         ])->save();
 
-        return AiReport::query()->create([
+        $data = [
             'creator_id' => $creator->id,
             'report_type' => 'value_score',
+            'status' => 'completed',
             'score' => $score,
             'grade' => $grade,
             'summary' => $summary,
             'risk_points' => $riskPoints,
             'next_steps' => $nextSteps,
+            'error_message' => null,
             'raw_payload' => [
                 'request' => $payload,
                 'response' => $responsePayload,
@@ -200,17 +150,25 @@ class CreatorAiScoringService
             ],
             'generated_by' => $user?->id,
             'generated_at' => $generatedAt,
-        ]);
+        ];
+
+        if ($report) {
+            $report->forceFill($data)->save();
+
+            return $report->refresh();
+        }
+
+        return AiReport::query()->create($data);
     }
 
-    private function requestPayload(AiSetting $setting, Creator $creator, $products): array
+    private function requestPayload(AiSetting $setting, Creator $creator, Collection $products): array
     {
-        $systemPrompt = $setting->system_prompt ?: '你是电商直播达人营销分析师，擅长根据达人画像、商品特点、履约和GMV数据判断达人是否适合带货。';
+        $systemPrompt = $setting->system_prompt ?: '你是电商直播达人运营分析师，擅长根据达人画像、商品特点、履约记录和 GMV 数据判断达人是否适合带货。请输出清晰、可执行、偏商务 BD 视角的诊断。';
 
         return [
             'model' => $setting->model,
             'temperature' => (float) $setting->temperature,
-            'max_tokens' => $setting->max_tokens,
+            'max_tokens' => (int) $setting->max_tokens,
             'messages' => [
                 [
                     'role' => 'system',
@@ -224,7 +182,72 @@ class CreatorAiScoringService
         ];
     }
 
-    private function buildPrompt(Creator $creator, $products): string
+    private function sendCompletionRequest(AiSetting $setting, array $payload): Response
+    {
+        $attempts = 2;
+        $response = null;
+
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            try {
+                $response = Http::withToken((string) $setting->api_key)
+                    ->acceptJson()
+                    ->asJson()
+                    ->connectTimeout(10)
+                    ->timeout(max(15, (int) $setting->timeout))
+                    ->post($setting->normalizedBaseUrl().'/chat/completions', $payload);
+            } catch (ConnectionException $exception) {
+                if ($attempt < $attempts) {
+                    usleep(1500000);
+
+                    continue;
+                }
+
+                throw new RuntimeException($this->formatConnectionError($exception), previous: $exception);
+            }
+
+            if ($response->successful() || ! $this->shouldRetry($response) || $attempt === $attempts) {
+                return $response;
+            }
+
+            usleep(1500000);
+        }
+
+        return $response;
+    }
+
+    private function shouldRetry(Response $response): bool
+    {
+        return in_array($response->status(), [429, 500, 502, 503, 504], true);
+    }
+
+    private function formatConnectionError(ConnectionException $exception): string
+    {
+        $message = $exception->getMessage();
+
+        if (str_contains($message, 'cURL error 28')) {
+            return 'AI 服务商连接超时，已自动重试但仍失败。当前网络到服务商不稳定，或服务商接口响应过慢，请稍后再试。';
+        }
+
+        return 'AI 服务商连接失败：'.$this->trimBody($message);
+    }
+
+    private function formatApiError(Response $response): string
+    {
+        $message = (string) data_get($response->json(), 'error.message', '');
+        $code = (string) data_get($response->json(), 'error.code', '');
+
+        if ($response->status() === 503 && (str_contains($message, 'memory overloaded') || $code === 'system_memory_overloaded')) {
+            return 'AI 服务商当前资源过载，已自动重试但仍失败。请稍后再试，或在 AI 设置中切换更稳定的模型/服务商。';
+        }
+
+        if ($response->status() === 429) {
+            return 'AI 服务请求过于频繁或额度受限，请稍后再试，或检查服务商限流/余额设置。';
+        }
+
+        return 'AI API 请求失败：'.$response->status().' '.$this->trimBody($response->body());
+    }
+
+    private function buildPrompt(Creator $creator, Collection $products): string
     {
         $productLines = $products->map(function (Product $product): array {
             return [
@@ -263,6 +286,13 @@ class CreatorAiScoringService
                 'script_notes' => $session->script_notes,
                 'review_notes' => $session->review_notes,
             ])->all(),
+            'recent_sample_shipments' => $creator->samples->sortByDesc('sent_at')->take(5)->values()->map(fn ($sample): array => [
+                'sample' => $sample->sampleItem?->name ?: $sample->sample_name,
+                'quantity' => $sample->quantity,
+                'status' => $sample->status,
+                'sent_at' => optional($sample->sent_at)->format('Y-m-d H:i'),
+                'received_at' => optional($sample->received_at)->format('Y-m-d H:i'),
+            ])->all(),
             'recent_follow_ups' => $creator->followUps->sortByDesc('contacted_at')->take(5)->values()->map(fn ($followUp): array => [
                 'channel' => $followUp->channel,
                 'content' => Str::limit((string) $followUp->content, 300),
@@ -270,13 +300,17 @@ class CreatorAiScoringService
             ])->all(),
         ];
 
-        return "请基于以下达人资料和当前启用商品，像专业运营顾问一样实时输出多维度诊断分析。\n"
-            ."请先用自然语言分段分析：内容类目契合度、粉丝与客单价匹配、转化潜力、合作成本风险、履约风险、复购/长期合作潜力。\n"
-            ."最后单独输出一行 RESULT_JSON:{...}，用于系统保存结果。\n"
-            ."RESULT_JSON 内字段必须包含：score, rating, summary, risk_points, next_steps, dimensions。\n"
-            ."score 必须为 1-10 的整数，rating 必须三选一：高度契合、中度适配、不适配。\n\n"
-            .'达人资料：'.json_encode($creatorData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n\n"
-            .'当前启用商品：'.json_encode($productLines, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return implode("\n", [
+            '请基于以下达人资料和当前选择的商品，输出多维度诊断分析。',
+            '请先用自然语言分段分析：内容类目契合度、粉丝与客单价匹配、转化潜力、合作成本风险、履约风险、复购/长期合作潜力。',
+            '最后必须单独输出一行 RESULT_JSON:{...}，用于系统保存结构化结果。',
+            'RESULT_JSON 字段必须包含：score, rating, summary, risk_points, next_steps, dimensions。',
+            'score 必须是 1-10 的整数；rating 必须三选一：高度契合、中度适配、不适配。',
+            '',
+            '达人资料：'.json_encode($creatorData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            '',
+            '当前商品：'.json_encode($productLines, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
     }
 
     private function parseResult(string $content): array
@@ -306,7 +340,13 @@ class CreatorAiScoringService
             }
         }
 
-        throw new RuntimeException('AI 返回内容不是有效 JSON：'.$content);
+        return [
+            'score' => 1,
+            'rating' => '不适配',
+            'summary' => $this->fallbackSummary($content),
+            'risk_points' => ['AI 返回内容未包含结构化结果'],
+            'next_steps' => ['请重新生成评分或人工补充判断'],
+        ];
     }
 
     private function normalizeGrade(string $grade, int $score): string
@@ -335,5 +375,21 @@ class CreatorAiScoringService
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    private function fallbackSummary(string $content): string
+    {
+        $content = preg_replace('/RESULT_JSON\s*:\s*\{.*\}$/su', '', $content) ?: $content;
+        $lines = collect(explode("\n", trim($content)))
+            ->map(fn (string $line): string => trim($line, " \t\n\r\0\x0B-*#0123456789.、，"))
+            ->filter()
+            ->take(3);
+
+        return Str::limit($lines->implode(' '), 240, '');
+    }
+
+    private function trimBody(string $body): string
+    {
+        return Str::limit(strip_tags($body), 500, '');
     }
 }
