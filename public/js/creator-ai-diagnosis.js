@@ -75,7 +75,7 @@ window.creatorAiDiagnosisModal = function (config) {
                 const payload = await this.parseJsonResponse(response);
 
                 if (! response.ok || payload.ok === false) {
-                    throw new Error(payload.message || `请求失败：${response.status}`);
+                    throw new Error(this.humanizeHttpError(response.status, payload.message || `请求失败：${response.status}`));
                 }
 
                 if (payload.queued && payload.status_url) {
@@ -123,7 +123,7 @@ window.creatorAiDiagnosisModal = function (config) {
                 const payload = await this.parseJsonResponse(response);
 
                 if (! response.ok || payload.ok === false) {
-                    throw new Error(payload.message || `查询失败：${response.status}`);
+                    throw new Error(this.humanizeHttpError(response.status, payload.message || `查询失败：${response.status}`));
                 }
 
                 if (payload.status === 'failed') {
@@ -372,6 +372,28 @@ window.creatorAiDiagnosisModal = function (config) {
                 .slice(0, 6);
         },
 
+        humanizeHttpError(status, value) {
+            const text = String(value || '').trim();
+
+            if (status === 429 || text.includes('Too Many Attempts') || text.includes('Too Many Requests')) {
+                return 'AI 评分请求过于频繁，当前系统限制为 1 分钟最多提交 10 次评分请求。这不是单个达人当天次数限制，而是为了避免连续点击、多人同时触发或异常访问把 AI 队列打满。请等待约 1 分钟后再试。';
+            }
+
+            if (status === 403) {
+                return '当前账号没有发起 AI 评分的权限，请联系超级管理员检查角色权限。';
+            }
+
+            if (status === 422) {
+                return 'AI 评分参数不完整或数据不存在，请重新选择达人和商品后再试。';
+            }
+
+            if (status >= 500) {
+                return this.humanizeError(text || `服务器异常：${status}`);
+            }
+
+            return this.humanizeError(text || `请求失败：${status}`);
+        },
+
         humanizeError(value) {
             const text = String(value || '').trim();
 
@@ -391,8 +413,8 @@ window.creatorAiDiagnosisModal = function (config) {
                 return 'AI 服务商当前不可用，请稍后再试。';
             }
 
-            if (text.includes('429') || text.includes('Too Many Requests')) {
-                return '请求过于频繁，请稍后再试。';
+            if (text.includes('429') || text.includes('Too Many Attempts') || text.includes('Too Many Requests')) {
+                return 'AI 评分请求过于频繁，当前系统限制为 1 分钟最多提交 10 次评分请求。这不是单个达人当天次数限制，而是为了避免连续点击、多人同时触发或异常访问把 AI 队列打满。请等待约 1 分钟后再试。';
             }
 
             return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();

@@ -19,7 +19,7 @@ trait ChecksMenuPermission
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->canEditMenu(static::getMenuPermissionKey()) ?? false;
+        return auth()->user()?->canCreateMenu(static::getMenuPermissionKey()) ?? false;
     }
 
     public static function canEdit(Model $record): bool

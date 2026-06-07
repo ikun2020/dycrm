@@ -35,5 +35,6 @@
 ## Notes For AI Agents
 
 - Read the nearby resource/model/migration before editing. The project has established CRM-specific field names and status values.
+- Before giving VPS deployment/update commands, read `docs/PRODUCTION_DEPLOYMENT.md`; production normally pulls GitHub Actions-built Docker images from GHCR instead of building on the VPS.
 - Prefer Filament 5 documentation and generated code patterns. Do not copy Filament 3 examples without checking compatibility.
 - Laravel Boost is not currently installed. If it is added later, prefer the official generated guidance alongside this file.

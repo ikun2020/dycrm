@@ -2,6 +2,8 @@
 
 use App\Models\AiReport;
 use App\Models\Creator;
+use App\Models\Sample;
+use App\Notifications\SampleShipmentCreated;
 use App\Services\CreatorAiScoringService;
 use App\Support\ThemeColor;
 use Illuminate\Http\Request;
@@ -22,6 +24,34 @@ Route::post('/admin/theme-color', function (Request $request) {
 
     return back();
 })->middleware('throttle:30,1')->name('admin.theme-color.update');
+
+Route::get('/admin/sample-shipment-badge', function () {
+    abort_unless(auth()->check(), 403);
+    abort_unless(auth()->user()?->canAccessMenu('samples'), 403);
+
+    return response()->json([
+        'count' => Sample::query()
+            ->where(fn ($query) => $query
+                ->where('status', 'pending')
+                ->orWhereNull('status'))
+            ->count(),
+    ]);
+})->middleware('throttle:120,1')->name('admin.sample-shipment-badge');
+
+Route::get('/admin/sample-shipment-notifications/{sample}', function (Sample $sample) {
+    abort_unless(auth()->check(), 403);
+    abort_unless(auth()->user()?->canAccessMenu('samples'), 403);
+
+    auth()->user()
+        ?->unreadNotifications()
+        ->where('type', SampleShipmentCreated::class)
+        ->where('data->sample_id', $sample->id)
+        ->get()
+        ->each
+        ->markAsRead();
+
+    return redirect('/admin/samples/'.$sample->id.'/edit');
+})->middleware('throttle:60,1')->name('admin.sample-shipment-notifications.show');
 
 Route::get('/admin/creator-ai-diagnosis/creators', function (Request $request) {
     abort_unless(auth()->check(), 403);

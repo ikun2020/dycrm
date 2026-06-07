@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Widgets\BusinessOverviewWidget;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use App\Filament\Widgets\CreatorValueLeaderboardWidget;
 use App\Filament\Widgets\FollowUpAlertWidget;
 use App\Filament\Widgets\FulfillmentMonitorWidget;
@@ -42,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 'panels::head.end',
-                fn (): string => '<link rel="stylesheet" href="'.asset('css/dycrm-admin.css').'?v=20260606-5">'
+                fn (): string => '<link rel="stylesheet" href="'.asset('css/dycrm-admin.css').'?v=20260608-5">'
                     .ThemeColor::styleTagForUser(auth()->user())->toHtml(),
             )
             ->renderHook(
@@ -54,7 +55,8 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 'panels::body.end',
-                fn (): string => '<script src="'.asset('js/creator-ai-diagnosis.js').'?v=20260606-2"></script>',
+                fn (): string => '<script src="'.asset('js/creator-ai-diagnosis.js').'?v=20260608-1"></script>'
+                    .'<script src="'.asset('js/sample-navigation-badge.js').'?v=20260607-4"></script>',
             )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -81,6 +83,9 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+            ])
+            ->plugins([
+                FilamentShieldPlugin::make(),
             ])
             ->authMiddleware([
                 Authenticate::class,

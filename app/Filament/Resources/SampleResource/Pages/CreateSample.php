@@ -24,9 +24,7 @@ class CreateSample extends CreateRecord
         User::query()
             ->where('is_active', true)
             ->whereKeyNot(auth()->id())
-            ->whereHas('permissionGroup', fn ($query) => $query
-                ->where('is_active', true)
-                ->where('notify_sample_shipments', true))
+            ->permission('ReceiveSampleShipmentNotification')
             ->get()
             ->each(fn (User $user) => $user->notify(
                 new SampleShipmentCreated($this->record, auth()->user()?->name),

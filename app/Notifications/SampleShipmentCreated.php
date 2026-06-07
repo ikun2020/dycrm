@@ -35,7 +35,8 @@ class SampleShipmentCreated extends LaravelNotification
         $creatorName = $this->sample->creator?->nickname ?: __('Unselected Creator');
         $sampleName = $this->sample->sampleItem?->name ?: $this->sample->sample_name ?: __('Unselected Sample');
 
-        return FilamentNotification::make()
+        return [
+            ...FilamentNotification::make()
             ->title(__('New Sample Shipment Reminder'))
             ->body(__(':actor created a sample shipment: :creator / :sample x :quantity', [
                 'actor' => $this->actorName ?: __('Staff'),
@@ -48,8 +49,10 @@ class SampleShipmentCreated extends LaravelNotification
             ->actions([
                 Action::make('view')
                     ->label(__('View Sample Shipment'))
-                    ->url(url('/admin/samples/'.$this->sample->id.'/edit')),
+                    ->url(route('admin.sample-shipment-notifications.show', $this->sample)),
             ])
-            ->getDatabaseMessage();
+            ->getDatabaseMessage(),
+            'sample_id' => $this->sample->id,
+        ];
     }
 }

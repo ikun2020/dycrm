@@ -8,8 +8,6 @@ use App\Filament\Resources\CreatorResource\RelationManagers\FollowUpsRelationMan
 use App\Models\Creator;
 use App\Models\FollowUp;
 use App\Models\Product;
-use App\Support\CreatorCsvImporter;
-use App\Support\OperationLogger;
 use App\Support\SimpleXlsx;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -24,7 +22,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
+use Waad\FilamentImportWizard\Actions\ImportWizardAction;
 
 class CreatorResource extends Resource
 {
@@ -70,6 +68,7 @@ class CreatorResource extends Resource
                     Forms\Components\TextInput::make('platform_uid')
                         ->label('UID')
                         ->required()
+                        ->unique(Creator::class, 'platform_uid', ignoreRecord: true)
                         ->maxLength(255),
                 ]),
             Section::make('数据画像')
@@ -212,10 +211,6 @@ class CreatorResource extends Resource
                     ->label(__('Grade'))
                     ->sortable()
                     ->badge(),
-                Tables\Columns\TextColumn::make('next_follow_up_at')
-                    ->label(__('Next Follow-up'))
-                    ->dateTime('Y-m-d')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('owner.name')
                     ->label(__('Owner')),
             ])
@@ -236,72 +231,27 @@ class CreatorResource extends Resource
             ]))
             ->headerActions([
                 Action::make('downloadCreatorImportTemplate')
-                    ->label('下载 Excel 模板')
+                    ->label('下载导入模板')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(fn () => self::downloadCreatorTemplate()),
-                Action::make('importCreatorsCsv')
+                ImportWizardAction::make('importCreators')
                     ->label('导入达人')
                     ->icon('heroicon-o-arrow-up-tray')
-                    ->form([
-                        Forms\Components\FileUpload::make('file')
-                            ->label(__('Import File'))
-                            ->disk('local')
-                            ->directory('imports')
-                            ->acceptedFileTypes([
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'text/csv',
-                                'text/plain',
-                            ])
-                            ->maxSize(50 * 1024)
-                            ->helperText('支持 .xlsx 和 CSV。必填项：平台、达人昵称、UID。')
-                            ->required(),
-                    ])
-                    ->action(function (array $data): void {
-                        $file = is_array($data['file'] ?? null) ? reset($data['file']) : ($data['file'] ?? null);
-
-                        if (! $file) {
-                            Notification::make()
-                                ->title(__('Import file is required.'))
-                                ->danger()
-                                ->send();
-
-                            return;
-                        }
-
-                        $result = app(CreatorCsvImporter::class)->import(Storage::disk('local')->path($file));
-                        Storage::disk('local')->delete($file);
-
-                        OperationLogger::record('creators.imported', null, [
-                            'file' => $file,
-                            'imported' => $result['imported'],
-                            'failed' => $result['failed'],
-                            'errors' => $result['errors'],
-                        ], '导入达人数据');
-
-                        $body = __('Creator import completed. :count row(s) imported.', [
-                            'count' => $result['imported'],
-                        ]);
-
-                        if ($result['failed'] > 0) {
-                            $body .= ' '.__(':count row(s) failed. Download the failure file for details.', [
-                                'count' => $result['failed'],
-                            ]);
-
-                            if ($result['errors'] !== []) {
-                                $body .= "\n".implode("\n", $result['errors']);
-                            }
-                        }
-
-                        $notification = Notification::make()
-                            ->title(__('Import Creators'))
-                            ->body($body);
-
-                        $result['imported'] > 0
-                            ? $notification->success()
-                            : $notification->danger();
-
-                        $notification->send();
-                    }),
+                    ->modalHeading('导入达人')
+                    ->forModel(Creator::class)
+                    ->chunkSize(300)
+                    ->queueConnection('redis')
+                    ->queueName('default')
+                    ->enableUpsert(true)
+                    ->upsertKeys(['platform_uid'])
+                    ->modalContent(fn () => view('filament.actions.creator-import-wizard-modal', [
+                        'modelClass' => Creator::class,
+                        'chunkSize' => 300,
+                        'enableUpsert' => true,
+                        'upsertKeys' => ['platform_uid'],
+                        'queueConnection' => 'redis',
+                        'queueName' => 'default',
+                    ])),
                 Action::make('exportCreatorsCsv')
                     ->label('导出达人')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -324,7 +274,7 @@ class CreatorResource extends Resource
                             ->get(['id', 'name', 'brand', 'category']),
                     ])),
                 Action::make('quickFollowUp')
-                    ->label(__('Quick Follow-up'))
+                    ->label('跟进')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->visible(fn (Creator $record): bool => self::canEdit($record))
                     ->modalHeading(fn (Creator $record): string => __('Follow up :creator', ['creator' => $record->nickname]))

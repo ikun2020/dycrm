@@ -34,6 +34,22 @@ class SampleResource extends Resource
 
     protected static ?string $pluralModelLabel = '寄样管理';
 
+    public static function getNavigationBadge(): ?string
+    {
+        $count = Sample::query()
+            ->where(fn ($query) => $query
+                ->where('status', 'pending')
+                ->orWhereNull('status'))
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): string|array|null
+    {
+        return 'danger';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -122,7 +138,8 @@ class SampleResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('shipping_company')->label(__('Shipping Company'))->searchable(),
                 Tables\Columns\TextColumn::make('tracking_number')->label(__('Tracking Number'))->searchable(),
-                Tables\Columns\TextColumn::make('created_at')->label(__('Created Date'))->dateTime('Y-m-d H:i')->sortable(),
+                Tables\Columns\TextColumn::make('owner.name')->label(__('Creator User'))->placeholder('-')->searchable(),
+                Tables\Columns\TextColumn::make('updated_at')->label(__('Updated Date'))->dateTime('Y-m-d H:i')->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->label(__('Status'))->options(self::statusOptions()),

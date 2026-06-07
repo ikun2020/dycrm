@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OperationLogResource\Pages;
 use App\Models\OperationLog;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -40,12 +42,12 @@ class OperationLogResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        return false;
+        return auth()->user()?->isSuperAdmin() ?? false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->isSuperAdmin() ?? false;
     }
 
     public static function form(Schema $schema): Schema
@@ -84,6 +86,12 @@ class OperationLogResource extends Resource
                         ->orderBy('action')
                         ->pluck('action', 'action')
                         ->all()),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => self::canDeleteAny()),
+                ]),
             ]);
     }
 

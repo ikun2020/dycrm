@@ -4,27 +4,24 @@ namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
 {
+    use HasRoles;
     use Notifiable;
 
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',
-        'permission_group_id',
-        'use_custom_permissions',
         'is_active',
         'theme_color',
-        'menu_permissions',
-        'editable_menus',
-        'deletable_menus',
     ];
 
     protected $hidden = [
@@ -37,11 +34,7 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'use_custom_permissions' => 'boolean',
             'is_active' => 'boolean',
-            'menu_permissions' => 'array',
-            'editable_menus' => 'array',
-            'deletable_menus' => 'array',
         ];
     }
 
@@ -49,17 +42,23 @@ class User extends Authenticatable implements FilamentUser
     {
         static::creating(function (User $user): void {
             if (! static::query()->exists()) {
-                $user->role = 'super_admin';
                 $user->is_active = true;
             }
         });
 
-        static::saving(function (User $user): void {
-            if ($user->role !== 'super_admin' && blank($user->permission_group_id)) {
-                $user->permission_group_id = PermissionGroup::query()
-                    ->where('name', '商务 BD')
-                    ->value('id');
+        static::created(function (User $user): void {
+            if (
+                static::query()->whereKeyNot($user->getKey())->exists()
+                || ! Schema::hasTable('roles')
+                || ! Schema::hasTable('model_has_roles')
+            ) {
+                return;
             }
+
+            $user->assignRole(Role::firstOrCreate([
+                'name' => config('filament-shield.super_admin.name', 'super_admin'),
+                'guard_name' => 'web',
+            ]));
         });
     }
 
@@ -70,85 +69,81 @@ class User extends Authenticatable implements FilamentUser
 
     public function isSuperAdmin(): bool
     {
-        return $this->role === 'super_admin';
+        return $this->hasRole(config('filament-shield.super_admin.name', 'super_admin'));
     }
 
     public function canAccessMenu(string $menu): bool
     {
-        return $this->canUseMenuAction($menu, 'view');
+        return $this->isSuperAdmin()
+            || ($this->canUseShieldMenuPermission($menu, 'view') ?? false);
+    }
+
+    public function canCreateMenu(string $menu): bool
+    {
+        return $this->isSuperAdmin()
+            || ($this->canUseShieldMenuPermission($menu, 'create') ?? false);
     }
 
     public function canEditMenu(string $menu): bool
     {
-        return $this->canUseMenuAction($menu, 'edit');
+        return $this->isSuperAdmin()
+            || ($this->canUseShieldMenuPermission($menu, 'update') ?? false);
     }
 
     public function canDeleteMenu(string $menu): bool
     {
-        return $this->canUseMenuAction($menu, 'delete');
+        return $this->isSuperAdmin()
+            || ($this->canUseShieldMenuPermission($menu, 'delete') ?? false);
     }
 
-    private function canUseMenuAction(string $menu, string $action): bool
+    private function canUseShieldMenuPermission(string $menu, string $action): ?bool
     {
-        if ($this->isSuperAdmin()) {
-            return true;
+        if (! $this->relationLoaded('roles')) {
+            $this->load('roles.permissions');
         }
 
-        $permissions = $this->permissionsForAction($action);
-
-        if ($permissions === null) {
-            return match ($action) {
-                'view' => $this->menu_permissions === null,
-                'edit' => $this->canAccessMenu($menu),
-                'delete' => false,
-                default => false,
-            };
+        if ($this->roles->isEmpty()) {
+            return null;
         }
 
-        return in_array($menu, $permissions, true);
-    }
+        $subject = self::shieldPermissionSubjects()[$menu] ?? null;
 
-    private function permissionsForAction(string $action): ?array
-    {
-        $group = $this->permissionGroup;
-
-        if (! $this->use_custom_permissions && $group?->is_active) {
-            return match ($action) {
-                'edit' => $group->editable_menus,
-                'delete' => $group->deletable_menus,
-                default => $group->menu_permissions,
-            };
+        if ($subject === null) {
+            return null;
         }
 
-        return match ($action) {
-            'edit' => $this->editable_menus,
-            'delete' => $this->deletable_menus,
-            default => $this->menu_permissions,
+        $prefix = match ($action) {
+            'view' => 'ViewAny',
+            'create' => 'Create',
+            'update' => 'Update',
+            'delete' => 'Delete',
+            default => null,
         };
+
+        if ($prefix === null) {
+            return null;
+        }
+
+        return $this->can($prefix.':'.$subject);
     }
 
-    public static function menuPermissionOptions(): array
+    public static function shieldPermissionSubjects(): array
     {
         return [
-            'creators' => __('Creator Profiles'),
-            'follow-ups' => __('Follow-ups'),
-            'products' => __('Products'),
-            'sample-items' => __('Sample Items'),
-            'samples' => __('Sample Shipments'),
-            'live-sessions' => __('Live Sessions'),
-            'gmv-records' => __('GMV Records'),
-            'ai-reports' => __('AI Reports'),
+            'creators' => 'Creator',
+            'follow-ups' => 'FollowUp',
+            'products' => 'Product',
+            'sample-items' => 'SampleItem',
+            'samples' => 'Sample',
+            'live-sessions' => 'LiveSession',
+            'gmv-records' => 'GmvRecord',
+            'ai-reports' => 'AiReport',
         ];
     }
 
     public function creators(): HasMany
     {
         return $this->hasMany(Creator::class, 'owner_id');
-    }
-
-    public function permissionGroup(): BelongsTo
-    {
-        return $this->belongsTo(PermissionGroup::class);
     }
 
     public function followUps(): HasMany
