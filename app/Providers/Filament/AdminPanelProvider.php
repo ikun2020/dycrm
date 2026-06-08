@@ -43,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 'panels::head.end',
-                fn (): string => '<link rel="stylesheet" href="'.asset('css/dycrm-admin.css').'?v=20260608-7">'
+                fn (): string => '<link rel="stylesheet" href="'.asset('css/dycrm-admin.css').'?v=20260609-5">'
                     .ThemeColor::styleTagForUser(auth()->user())->toHtml(),
             )
             ->renderHook(

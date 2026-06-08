@@ -1,17 +1,18 @@
-# Project AI Guide
+# DYCRM AI Project Context
 
 ## Stack
 
-- Laravel 12 application for a Douyin creator CRM.
-- Filament Admin Panel uses Filament 5.x (`filament/filament` `~5.0`).
+- Laravel 12 + Filament 5 CRM for Douyin creators.
 - PHP target is 8.3. The admin panel lives at `/admin`.
+- Local Docker admin URL: http://127.0.0.1:3100/admin
+- Production deploy uses GitHub Actions-built Docker image and VPS pulls from GHCR.
 
 ## Filament Conventions
 
 - Put admin resources under `app/Filament/Resources` and page classes under each resource's `Pages` namespace.
 - Follow Filament 5 resource signatures: `form(Schema $schema): Schema`, `table(Table $table): Table`, and `getPages(): array`.
 - Use `Filament\Forms` for form fields, `Filament\Schemas` for schema/layout components, and `Filament\Tables` for tables.
-- Prefer Filament built-ins for forms, tables, actions, filters, widgets, notifications, imports, and exports before adding custom UI.
+- Prefer Filament built-ins for forms, tables, actions, filters, widgets, notifications before adding custom UI.
 - Use Heroicon names such as `heroicon-o-*` for navigation and action icons.
 - Keep user-facing admin labels translatable with `__()`. Existing translations live in `lang/zh_CN.json`.
 - Preserve the current Chinese business terminology for creator CRM concepts.
@@ -32,9 +33,18 @@
   - `vendor/bin/pint --test`
 - If a command cannot run in the current environment, report that clearly.
 
-## Notes For AI Agents
+## Notes
 
 - Read the nearby resource/model/migration before editing. The project has established CRM-specific field names and status values.
 - Before giving VPS deployment/update commands, read `docs/PRODUCTION_DEPLOYMENT.md`; production normally pulls GitHub Actions-built Docker images from GHCR instead of building on the VPS.
-- Prefer Filament 5 documentation and generated code patterns. Do not copy Filament 3 examples without checking compatibility.
-- Laravel Boost is not currently installed. If it is added later, prefer the official generated guidance alongside this file.
+
+## Current Decisions
+
+- Use Filament Shield roles as the permission system.
+- Default development is local testing. Commit locally when useful, but do not push unless explicitly requested.
+
+## UX Preferences
+- Prefer clean Filament demo-style layouts.
+- Avoid overly custom UI that breaks native Filament behavior.
+- Keep mobile table layout usable.
+- Theme colors should be consistent.
