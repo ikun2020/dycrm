@@ -3,13 +3,13 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Widgets\BusinessOverviewWidget;
-use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use App\Filament\Widgets\CreatorValueLeaderboardWidget;
 use App\Filament\Widgets\FollowUpAlertWidget;
 use App\Filament\Widgets\FulfillmentMonitorWidget;
 use App\Filament\Widgets\InviteConflictWidget;
 use App\Filament\Widgets\TeamPerformanceWidget;
 use App\Support\ThemeColor;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -43,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 'panels::head.end',
-                fn (): string => '<link rel="stylesheet" href="'.asset('css/dycrm-admin.css').'?v=20260609-5">'
+                fn (): string => '<link rel="stylesheet" href="'.asset('css/dycrm-admin.css').'?v=20260609-7">'
                     .ThemeColor::styleTagForUser(auth()->user())->toHtml(),
             )
             ->renderHook(

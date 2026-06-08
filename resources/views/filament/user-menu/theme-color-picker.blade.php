@@ -24,7 +24,7 @@
                 title="{{ $label }}"
                 aria-label="{{ __('Theme Color') }}: {{ $label }}"
             >
-                <span class="dycrm-theme-color-menu__swatch dycrm-theme-color-menu__swatch--{{ $color }}"></span>
+                <span class="dycrm-theme-color-menu__swatch" style="{{ \App\Support\ThemeColor::swatchStyle($color) }}"></span>
             </button>
         @endforeach
     </form>

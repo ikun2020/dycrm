@@ -46,7 +46,7 @@ class ThemeColorSettings extends Page
     public function save(): void
     {
         $this->validate([
-            'themeColor' => ['required', 'string', 'in:'.implode(',', array_keys(ThemeColor::options()))],
+            'themeColor' => ['required', 'string', ThemeColor::validationRule()],
         ]);
 
         auth()->user()?->forceFill([

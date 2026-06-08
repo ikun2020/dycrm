@@ -15,7 +15,7 @@ Route::post('/admin/theme-color', function (Request $request) {
     abort_unless(auth()->check(), 403);
 
     $validated = $request->validate([
-        'theme_color' => ['required', 'string', 'in:'.implode(',', array_keys(ThemeColor::options()))],
+        'theme_color' => ['required', 'string', ThemeColor::validationRule()],
     ]);
 
     auth()->user()?->forceFill([
