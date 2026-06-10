@@ -37,6 +37,11 @@ class ShieldRoleSeeder extends Seeder
 
         $this->ensurePermissions([
             'ReceiveSampleShipmentNotification',
+            'Publish:KnowledgePost',
+            'ViewAny:KnowledgeComment',
+            'Create:KnowledgeComment',
+            'Update:KnowledgeComment',
+            'Delete:KnowledgeComment',
         ]);
 
         $this->deleteUnusedDetailPermissions();
@@ -53,17 +58,24 @@ class ShieldRoleSeeder extends Seeder
             'LiveSession',
             'GmvRecord',
             'AiReport',
+            'KnowledgePost',
+            'KnowledgeComment',
         ], ['ViewAny', 'Create', 'Update']));
 
-        $operationsRole->syncPermissions($this->permissionsForResources([
-            'Creator',
-            'Product',
-            'SampleItem',
-            'Sample',
-            'LiveSession',
-            'GmvRecord',
-            'AiReport',
-        ], ['ViewAny', 'Create', 'Update']));
+        $operationsRole->syncPermissions(array_merge(
+            $this->permissionsForResources([
+                'Creator',
+                'Product',
+                'SampleItem',
+                'Sample',
+                'LiveSession',
+                'GmvRecord',
+                'AiReport',
+                'KnowledgePost',
+                'KnowledgeComment',
+            ], ['ViewAny', 'Create', 'Update']),
+            ['Publish:KnowledgePost'],
+        ));
 
         $sampleRole->syncPermissions(array_merge(
             $this->permissionsForResources(['Sample', 'SampleItem'], ['ViewAny', 'Create', 'Update']),

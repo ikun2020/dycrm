@@ -138,6 +138,7 @@ class User extends Authenticatable implements FilamentUser
             'live-sessions' => 'LiveSession',
             'gmv-records' => 'GmvRecord',
             'ai-reports' => 'AiReport',
+            'knowledge-posts' => 'KnowledgePost',
         ];
     }
 

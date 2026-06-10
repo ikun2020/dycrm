@@ -235,6 +235,11 @@ return [
 
     'custom_permissions' => [
         'ReceiveSampleShipmentNotification' => '接收寄样提醒',
+        'Publish:KnowledgePost' => '发布知识库文章',
+        'ViewAny:KnowledgeComment' => '查看知识库评论',
+        'Create:KnowledgeComment' => '新增知识库评论',
+        'Update:KnowledgeComment' => '编辑知识库评论',
+        'Delete:KnowledgeComment' => '删除知识库评论',
     ],
 
     /*
