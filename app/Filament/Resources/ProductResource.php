@@ -25,6 +25,8 @@ class ProductResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
 
+    protected static ?string $navigationLabel = "\u{5546}\u{54C1}\u{7BA1}\u{7406}";
+
     protected static string|\UnitEnum|null $navigationGroup = '商品与样品';
 
     protected static ?string $modelLabel = '商品';

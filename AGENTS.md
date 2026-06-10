@@ -41,6 +41,8 @@
 ## Current Decisions
 
 - Use Filament Shield roles as the permission system.
+- Installed the Filamen Import Wizard plug-in to enhance CSV and Excel import capabilities
+- The Nitik-Error Tracker plug-in has been installed to monitor website errors.
 - Default development is local testing. Commit locally when useful, but do not push unless explicitly requested.
 
 ## UX Preferences

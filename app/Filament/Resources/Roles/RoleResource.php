@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Roles;
 
-use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use App\Filament\Resources\Roles\Pages\CreateRole;
 use App\Filament\Resources\Roles\Pages\EditRole;
 use App\Filament\Resources\Roles\Pages\ListRoles;
 use App\Filament\Resources\Roles\Pages\ViewRole;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use BezhanSalleh\FilamentShield\Traits\HasShieldFormComponents;
 use BezhanSalleh\PluginEssentials\Concerns\Resource as Essentials;
@@ -44,11 +44,33 @@ class RoleResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static string|\UnitEnum|null $navigationGroup = '系统管理';
+    protected static ?string $navigationLabel = "\u{89D2}\u{8272}\u{7BA1}\u{7406}";
 
-    protected static ?string $modelLabel = '权限组';
+    protected static string|\UnitEnum|null $navigationGroup = "\u{7CFB}\u{7EDF}\u{7BA1}\u{7406}";
 
-    protected static ?string $pluralModelLabel = '权限组';
+    protected static ?string $modelLabel = "\u{89D2}\u{8272}";
+
+    protected static ?string $pluralModelLabel = "\u{89D2}\u{8272}\u{7BA1}\u{7406}";
+
+    public static function getNavigationLabel(): string
+    {
+        return "\u{89D2}\u{8272}\u{7BA1}\u{7406}";
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        return "\u{7CFB}\u{7EDF}\u{7BA1}\u{7406}";
+    }
+
+    public static function getModelLabel(): string
+    {
+        return "\u{89D2}\u{8272}";
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return "\u{89D2}\u{8272}\u{7BA1}\u{7406}";
+    }
 
     #[Override]
     public static function form(Schema $schema): Schema
@@ -83,7 +105,6 @@ class RoleResource extends Resource
                                     ->visible(fn (): bool => static::shield()->isCentralApp() && Utils::isTenancyEnabled())
                                     ->dehydrated(fn (): bool => static::shield()->isCentralApp() && Utils::isTenancyEnabled()),
                                 static::getSelectAllFormComponent(),
-
                             ])
                             ->columns([
                                 'sm' => 2,
